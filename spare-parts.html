@@ -1,0 +1,1142 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spare Parts 관리 시스템</title>
+  <script src="theme.js"></script>
+  <script>SparePartsTheme.initTheme();</script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+  <style>
+    :root,[data-theme="light"]{
+      --bg:#F1F5F9;--sidebar-bg:#FFFFFF;--text:#0F172A;--text-soft:#334155;--text-muted:#64748B;
+      --text-faint:#94A3B8;--text-strong:#0F172A;--text-nav:#475569;--text-nav-active:#0F172A;
+      --border:#E2E8F0;--border-soft:rgba(15,23,42,.08);--panel-bg:#FFFFFF;--panel-border:#E2E8F0;
+      --table-head:#F1F5F9;--table-head-alt:#E2E8F0;--table-border:#E2E8F0;--table-cell-border:#F1F5F9;
+      --stat-bg:#FFFFFF;--input-bg:#FFFFFF;--input-text:#0F172A;--select-bg:#FFFFFF;--select-border:#CBD5E1;
+      --nav-hover:rgba(15,23,42,.05);--nav-active-bg:rgba(29,106,241,.1);--nav-active-border:rgba(29,106,241,.35);
+      --upload-bg:rgba(29,106,241,.08);--upload-border:rgba(29,106,241,.3);--upload-text:#1D4ED8;
+      --chart-footnote-bg:#F8FAFC;--chart-center:#0F172A;--chart-callout-name:#64748B;--fn-label:#334155;
+      --shadow-panel:0 1px 3px rgba(15,23,42,.06);--auto-cell-bg:#F8FAFC;--score-bar-bg:#E2E8F0;
+      --note-bg:#F1F5F9;--summary-item-bg:#F8FAFC;--wf-input-bg:#FFFBEB;--wf-input-border:rgba(217,119,6,.4);
+      --wf-input-text:#B45309;--ledger-focus-bg:#F8FAFC;--editable-stock-bg:rgba(16,185,129,.08);
+      --editable-stock-border:rgba(16,185,129,.35);--danger-bg:rgba(239,68,68,.08);--danger-border:rgba(239,68,68,.25);
+      --danger-text:#DC2626;--danger-text-hover:#B91C1C;--scrollbar:#CBD5E1;--sum-row-bg:#F1F5F9;
+      --callout-stroke:rgba(100,116,139,.45);--pie-label:#FFFFFF;
+    }
+    [data-theme="dark"]{
+      --bg:#0F172A;--sidebar-bg:rgba(15,23,42,.95);--text:#E2E8F0;--text-soft:#CBD5E1;--text-muted:#94A3B8;
+      --text-faint:#64748B;--text-strong:#F8FAFC;--text-nav:#CBD5E1;--text-nav-active:#FFFFFF;
+      --border:rgba(255,255,255,.1);--border-soft:rgba(255,255,255,.06);--panel-bg:rgba(255,255,255,.05);
+      --panel-border:rgba(255,255,255,.1);--table-head:rgba(30,41,59,.9);--table-head-alt:rgba(51,65,85,.95);
+      --table-border:rgba(255,255,255,.06);--table-cell-border:rgba(255,255,255,.04);--stat-bg:rgba(255,255,255,.05);
+      --input-bg:transparent;--input-text:#E2E8F0;--select-bg:#1E293B;--select-border:#475569;
+      --nav-hover:rgba(255,255,255,.08);--nav-active-bg:rgba(29,106,241,.3);--nav-active-border:rgba(51,137,252,.4);
+      --upload-bg:rgba(29,106,241,.2);--upload-border:rgba(51,137,252,.4);--upload-text:#BFDBFE;
+      --chart-footnote-bg:rgba(15,23,42,.35);--chart-center:#FFFFFF;--chart-callout-name:#94A3B8;--fn-label:#E2E8F0;
+      --shadow-panel:none;--auto-cell-bg:rgba(15,23,42,.5);--score-bar-bg:rgba(30,41,59,.8);
+      --note-bg:rgba(30,41,59,.5);--summary-item-bg:rgba(255,255,255,.05);--wf-input-bg:rgba(69,26,3,.4);
+      --wf-input-border:rgba(245,158,11,.4);--wf-input-text:#FDE68A;--ledger-focus-bg:rgba(30,41,59,.8);
+      --editable-stock-bg:rgba(6,78,59,.15);--editable-stock-border:rgba(16,185,129,.3);
+      --danger-bg:rgba(239,68,68,.15);--danger-border:rgba(239,68,68,.35);--danger-text:#FCA5A5;
+      --danger-text-hover:#FECACA;--scrollbar:#475569;--sum-row-bg:rgba(30,41,59,.6);
+      --callout-stroke:rgba(148,163,184,0.55);--pie-label:#FFFFFF;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', 'Malgun Gothic', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; transition: background .2s,color .2s; }
+    .app { display: flex; min-height: 100vh; }
+    aside { width: 240px; flex-shrink: 0; background: var(--sidebar-bg); border-right: 1px solid var(--border); padding: 16px; display: flex; flex-direction: column; transition: background .2s,border-color .2s; }
+    .logo { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; padding: 0 8px; }
+    .logo-icon { width: 40px; height: 40px; background: #1d6af1; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+    .logo h1 { font-size: 14px; font-weight: 700; color: var(--text-strong); }
+    .logo p { font-size: 11px; color: var(--text-muted); }
+    nav a { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 12px; color: var(--text-nav); text-decoration: none; font-size: 14px; margin-bottom: 4px; cursor: pointer; transition: background .15s,color .15s; }
+    nav a:hover { background: var(--nav-hover); color: var(--text-nav-active); }
+    nav a.active { background: var(--nav-active-bg); color: var(--text-nav-active); box-shadow: inset 0 0 0 1px var(--nav-active-border); }
+    .theme-toggle { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; margin-top: 12px; padding: 9px 12px; border-radius: 12px; border: 1px solid var(--border); background: var(--stat-bg); color: var(--text-muted); font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; transition: background .15s,border-color .15s; }
+    .theme-toggle:hover { background: var(--nav-hover); color: var(--text-soft); }
+    .theme-toggle svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    [data-theme="light"] .theme-toggle .ico-moon,[data-theme="dark"] .theme-toggle .ico-sun { display: none; }
+    .btn-upload { width: 100%; margin-top: 12px; padding: 10px; border-radius: 12px; border: 1px solid var(--upload-border); background: var(--upload-bg); color: var(--upload-text); font-size: 13px; font-weight: 600; cursor: pointer; }
+    .btn-upload:hover { filter: brightness(.95); }
+    .file-info { margin-top: auto; padding-top: 16px; font-size: 11px; color: var(--text-faint); }
+    .file-info strong { display: block; color: var(--text-soft); margin-bottom: 4px; word-break: break-all; }
+    main { flex: 1; overflow: auto; padding: 24px 32px; background: var(--bg); }
+    .page { display: none; } .page.active { display: block; }
+    h2.page-title { font-size: 24px; font-weight: 700; margin-bottom: 4px; color: var(--text-strong); }
+    .page-desc { font-size: 13px; color: var(--text-muted); margin-bottom: 20px; }
+    .panel { background: var(--panel-bg); border: 1px solid var(--panel-border); border-radius: 16px; margin-bottom: 20px; overflow: hidden; box-shadow: var(--shadow-panel); transition: background .2s,border-color .2s; }
+    .panel-head { padding: 16px 20px; border-bottom: 1px solid var(--panel-border); }
+    .panel-head h3 { font-size: 16px; color: var(--text-strong); }
+    .panel-head p { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+    .panel-body { padding: 0; overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 800px; }
+    th, td { border-bottom: 1px solid var(--table-border); padding: 10px 12px; text-align: left; vertical-align: middle; }
+    th { background: var(--table-head); font-size: 11px; color: var(--text-muted); font-weight: 600; white-space: nowrap; }
+    .wf-input { width: 56px; padding: 6px; text-align: center; border-radius: 6px; border: 1px solid var(--wf-input-border); background: var(--wf-input-bg); color: var(--wf-input-text); font-weight: 600; }
+    .num { font-family: Consolas, monospace; text-align: center; }
+    .num-green { color: #6ee7b7; } .num-blue { color: #93c5fd; } .num-violet { color: #c4b5fd; font-weight: 700; }
+    .num-yellow { color: #fde047; font-size: 18px; font-weight: 700; }
+    [data-theme="light"] .num-green { color: #059669; } [data-theme="light"] .num-blue { color: #2563EB; }
+    [data-theme="light"] .num-violet { color: #7C3AED; } [data-theme="light"] .num-yellow { color: #CA8A04; }
+    .sum-row { background: var(--sum-row-bg); font-weight: 700; }
+    .alert { padding: 10px 20px; font-size: 13px; border-top: 1px solid var(--panel-border); }
+    .alert.ok { color: #4ade80; } .alert.err { color: #f87171; }
+    [data-theme="light"] .alert.ok { color: #059669; } [data-theme="light"] .alert.err { color: #DC2626; }
+    .wf-rules { padding: 16px 20px 20px; border-top: 1px solid var(--border-soft); font-size: 12px; color: var(--text-muted); line-height: 1.8; }
+    .wf-rules h4 { color: var(--text-soft); font-size: 13px; margin-bottom: 8px; }
+    .wf-rules ol { padding-left: 20px; }
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px; }
+    .stat { background: var(--stat-bg); border: 1px solid var(--panel-border); border-radius: 14px; padding: 16px; box-shadow: var(--shadow-panel); }
+    .stat label { font-size: 11px; color: var(--text-muted); display: block; line-height: 1.4; }
+    .stat label.stat-emphasis { font-size: 14px; font-weight: 600; color: var(--text-soft); letter-spacing: -0.02em; }
+    .stat span { display: block; font-size: 22px; font-weight: 600; margin-top: 6px; }
+    .stat span.stat-emphasis { font-size: 24px; font-weight: 600; }
+    .stat-top label { font-size: 14px; font-weight: 600; color: var(--text-soft); }
+    .stat-top span { font-size: 24px; font-weight: 600; margin-top: 6px; display: block; }
+    .charts { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+    @media (max-width: 900px) { .charts { grid-template-columns: 1fr; } }
+    .chart-panel-body { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0; min-height: 340px; overflow: hidden; }
+    .chart-callout-wrap { position: relative; width: 100%; max-width: 100%; height: 290px; margin: 0 auto; overflow: hidden; flex-shrink: 0; }
+    .chart-callout-wrap canvas { display: block; width: 100% !important; height: 100% !important; }
+    .chart-leaders { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; z-index: 2; }
+    .callout-layer { position: absolute; inset: 0; pointer-events: none; overflow: visible; z-index: 3; }
+    .callout-label { position: absolute; max-width: 100px; line-height: 1.25; }
+    .callout-label .name { font-size: 11px; color: var(--chart-callout-name); margin-bottom: 1px; white-space: nowrap; }
+    .callout-label .pct { font-size: 16px; font-weight: 700; line-height: 1.15; }
+    .chart-footnote { display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-start; gap: 6px 18px; width: 100%; padding: 10px 14px 14px; border-top: 1px solid var(--border-soft); background: var(--chart-footnote-bg); }
+    .fn-item { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; line-height: 1.3; }
+    .fn-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .fn-label { color: var(--fn-label); font-weight: 600; white-space: nowrap; }
+    .fn-desc { color: var(--text-faint); font-size: 10px; white-space: nowrap; }
+    .fn-desc::before { content: '·'; margin: 0 4px; color: var(--text-faint); }
+    .chart-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; z-index: 4; }
+    .chart-center .big { font-size: 30px; font-weight: 800; line-height: 1; color: var(--chart-center); }
+    .chart-center .sub { font-size: 12px; color: var(--text-faint); margin-top: 4px; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    @media (max-width: 800px) { .grid-2 { grid-template-columns: 1fr; } }
+    .summary-box { padding: 20px; }
+    .summary-item { display: flex; justify-content: space-between; padding: 12px 16px; background: var(--summary-item-bg); border-radius: 10px; margin-bottom: 8px; }
+    .note { font-size: 12px; color: var(--text-muted); line-height: 1.6; padding: 16px; background: var(--note-bg); border-radius: 10px; margin-top: 12px; }
+    .ledger-toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 16px; }
+    .ledger-toolbar input[type=search] { padding: 8px 12px 8px 32px; border-radius: 12px; border: 1px solid var(--panel-border); background: var(--input-bg); color: var(--input-text); font-size: 13px; min-width: 220px; }
+    .search-wrap { position: relative; }
+    .search-wrap::before { content: '🔍'; position: absolute; left: 10px; top: 50%; transform: translateY(-50%); font-size: 12px; opacity: .5; }
+    .btn { padding: 8px 16px; border-radius: 12px; border: none; font-size: 13px; font-weight: 600; cursor: pointer; background: #1d6af1; color: #fff; }
+    .btn-export { display: inline-flex; align-items: center; gap: 8px; background: linear-gradient(135deg, #16a34a, #22c55e); color: #fff; box-shadow: 0 2px 8px rgba(34,197,94,.25); }
+    .btn-export:hover { background: linear-gradient(135deg, #15803d, #16a34a); }
+    .btn-danger { background: var(--danger-bg); color: var(--danger-text); border: 1px solid var(--danger-border); }
+    .btn-danger:hover { background: var(--danger-bg); color: var(--danger-text-hover); filter: brightness(.95); }
+    .ledger-scroll { overflow: auto; max-height: calc(100vh - 280px); }
+    .ledger-scroll-hint { padding: 6px 12px; font-size: 10px; color: var(--text-faint); text-align: right; border-bottom: 1px solid var(--border-soft); }
+    .ledger-table { min-width: max-content; font-size: 12px; }
+    .ledger-table th { position: sticky; top: 0; z-index: 2; padding: 8px 6px; text-align: center; background: var(--table-head); }
+    .ledger-table th.th-auto { background: var(--table-head-alt); font-size: 10px; line-height: 1.3; }
+    .ledger-table td { padding: 4px 6px; border-right: 1px solid var(--table-cell-border); }
+    .ledger-table td.auto { background: var(--auto-cell-bg); text-align: center; color: var(--text-muted); }
+    .ledger-input { width: 100%; min-width: 50px; padding: 4px 6px; border: 1px solid transparent; border-radius: 4px; background: transparent; color: var(--input-text); font-size: 12px; }
+    .ledger-input:focus { outline: none; border-color: rgba(51,137,252,.5); background: var(--ledger-focus-bg); }
+    .ledger-input.editable-stock { border-color: var(--editable-stock-border); background: var(--editable-stock-bg); text-align: center; }
+    .ledger-select { width: 100%; padding: 4px; border-radius: 4px; border: 1px solid var(--select-border); background: var(--select-bg); color: var(--input-text); font-size: 12px; text-align: center; }
+    .score-bar { position: relative; height: 28px; min-width: 80px; border-radius: 6px; background: var(--score-bar-bg); overflow: hidden; border: 1px solid var(--panel-border); }
+    .score-bar-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 6px; transition: width .3s; }
+    .score-bar-fill.high { background: linear-gradient(90deg, #8b5cf6, #e879f9); }
+    .score-bar-fill.mid { background: linear-gradient(90deg, #3b82f6, #22d3ee); }
+    .score-bar-fill.low { background: linear-gradient(90deg, #64748b, #94a3b8); }
+    .score-bar-text { position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; height: 100%; font-size: 11px; font-weight: 700; color: var(--text-strong); }
+    .badge { display: inline-block; min-width: 28px; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; text-align: center; }
+    .badge-A { background: rgba(16,185,129,.25); color: #6ee7b7; }
+    .badge-B { background: rgba(245,158,11,.25); color: #fcd34d; }
+    .badge-C { background: rgba(249,115,22,.25); color: #fdba74; }
+    .badge-none { background: rgba(100,116,139,.3); color: #94a3b8; }
+    [data-theme="light"] .badge-A { background: rgba(16,185,129,.15); color: #059669; }
+    [data-theme="light"] .badge-B { background: rgba(245,158,11,.15); color: #B45309; }
+    [data-theme="light"] .badge-C { background: rgba(249,115,22,.15); color: #C2410C; }
+    [data-theme="light"] .badge-none { background: rgba(100,116,139,.15); color: #64748B; }
+    .badge-ld { background: rgba(239,68,68,.2); color: #fca5a5; font-size: 10px; padding: 2px 6px; }
+    [data-theme="light"] .badge-ld { background: rgba(239,68,68,.12); color: #DC2626; }
+    .btn-del { background: var(--danger-bg); border: 1px solid var(--danger-border); border-radius: 6px; cursor: pointer; color: var(--danger-text); font-size: 11px; padding: 3px 7px; line-height: 1.2; }
+    .btn-del:hover { color: var(--danger-text-hover); filter: brightness(.95); }
+    .chk { width: 16px; height: 16px; accent-color: #3389fc; cursor: pointer; }
+    #fileInput { display: none; }
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 4px; }
+
+    /* ===== Dashboard (spare-parts-dashboard 스타일) ===== */
+    #page-dashboard{
+      --d-ok:#0D9488;--d-warn:#D97706;--d-crit:#E11D48;--d-accent:#7C3AED;--d-blue:#2563EB;--d-green:#16A34A;
+      --d-track:#E2E8F0;--d-card2:#F1F5F9;--d-line2:#EEF2F7;--d-alert-bg:linear-gradient(90deg,rgba(225,29,72,.08),rgba(225,29,72,.02) 55%,transparent);
+      --d-alert-border:rgba(225,29,72,.22);--d-row-hover:rgba(15,23,42,.025);--d-row-crit:rgba(225,29,72,.05);
+      --d-ba:rgba(225,29,72,.1);--d-bat:#BE123C;--d-bb:rgba(217,119,6,.12);--d-bbt:#B45309;--d-bc:rgba(13,148,136,.12);--d-bct:#0F766E;
+    }
+    [data-theme="dark"] #page-dashboard{
+      --d-ok:#2DD4A7;--d-warn:#FBBF3C;--d-crit:#FF5F73;--d-accent:#A78BFA;--d-blue:#60A5FA;--d-green:#4ADE80;
+      --d-track:#1C2735;--d-card2:#18222F;--d-line2:#1C2735;--d-alert-bg:linear-gradient(90deg,rgba(255,95,115,.14),rgba(255,95,115,.03) 55%,transparent);
+      --d-alert-border:rgba(255,95,115,.32);--d-row-hover:rgba(255,255,255,.022);--d-row-crit:rgba(255,95,115,.05);
+      --d-ba:rgba(255,95,115,.16);--d-bat:var(--d-crit);--d-bb:rgba(251,191,60,.16);--d-bbt:var(--d-warn);--d-bc:rgba(45,212,167,.14);--d-bct:var(--d-ok);
+    }
+    .dash-top{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:16px;flex-wrap:wrap}
+    .dash-stamps{display:flex;gap:8px;flex-wrap:wrap}
+    .dash-stamp{background:var(--panel-bg);border:1px solid var(--panel-border);border-radius:8px;padding:6px 11px;font-size:10.5px;color:var(--text-muted);line-height:1.45}
+    .dash-stamp b{display:block;font-size:12px;color:var(--text-strong);font-weight:600}
+    .dash-kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:12px}
+    .dash-kpi{background:var(--panel-bg);border:1px solid var(--panel-border);border-radius:12px;padding:15px 16px;position:relative;overflow:hidden;box-shadow:var(--shadow-panel)}
+    .dash-kpi::after{content:"";position:absolute;inset:0 0 auto 0;height:2px;background:var(--c);opacity:.55}
+    .dash-kpi-h{display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:11.5px;color:var(--text-muted);font-weight:500}
+    .dash-kpi-ico{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;background:color-mix(in srgb,var(--c) 15%,transparent);flex:none}
+    .dash-kpi-ico svg{width:14px;height:14px;stroke:var(--c);fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+    .dash-alert svg{width:17px;height:17px;stroke:var(--d-crit);fill:none;stroke-width:2;flex:none}
+    .dash-kpi-v{font-size:32px;font-weight:700;line-height:1;letter-spacing:-.02em;color:var(--c)}
+    .dash-kpi-v u{text-decoration:none;font-size:13px;font-weight:500;color:var(--text-muted);margin-left:4px}
+    .dash-kpi-f{margin-top:10px;font-size:12px;color:var(--text-muted);line-height:1.45}
+    .dash-alert{display:flex;align-items:center;gap:12px;background:var(--d-alert-bg);border:1px solid var(--d-alert-border);border-left:3px solid var(--d-crit);border-radius:10px;padding:12px 16px;margin-bottom:12px}
+    .dash-alert b{font-size:13px;font-weight:700;white-space:nowrap;color:var(--d-crit)}
+    .dash-alert .txt{flex:1;font-size:12px;color:var(--text-soft);line-height:1.5}
+    .dash-alert .txt em{font-style:normal;color:var(--d-crit);font-weight:700}
+    .dash-alert .go{font-size:11px;color:var(--text-muted);white-space:nowrap}
+    .dash-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+    .dash-card{background:var(--panel-bg);border:1px solid var(--panel-border);border-radius:12px;padding:18px 20px;margin-bottom:12px;box-shadow:var(--shadow-panel)}
+    .dash-row .dash-card{margin-bottom:0}
+    .dash-card-h{margin-bottom:16px}
+    .dash-card-h b{font-size:14px;font-weight:700;display:block;color:var(--text-strong)}
+    .dash-card-h i{font-style:normal;font-size:11px;color:var(--text-muted);display:block;margin-top:3px}
+    .dash-dn-wrap{display:flex;align-items:center;gap:26px;flex-wrap:wrap}
+    .dash-legend{flex:1;min-width:200px}
+    .dash-dl{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--d-line2)}
+    .dash-dl:last-child{border-bottom:none}
+    .dash-dl i{width:9px;height:9px;border-radius:3px;flex:none}
+    .dash-dl b{font-size:12px;font-weight:600;flex:1;color:var(--text-strong)}
+    .dash-dl b em{font-style:normal;display:block;font-size:10px;color:var(--text-muted);font-weight:400;margin-top:2px}
+    .dash-dl .v{text-align:right;font-size:14px;font-weight:700}
+    .dash-dl .v u{text-decoration:none;display:block;font-size:10px;color:var(--text-muted);font-weight:500;margin-top:2px}
+    .dash-grades{display:flex;flex-direction:column;gap:16px}
+    .dash-gr-h{display:flex;align-items:baseline;gap:8px;margin-bottom:7px}
+    .dash-gr-h b{font-size:13px;font-weight:700}
+    .dash-gr-h em{font-style:normal;font-size:11px;color:var(--text-muted);flex:1}
+    .dash-gr-h .rt{font-size:14px;font-weight:700}
+    .dash-gr-t{position:relative;height:18px;background:var(--d-card2);border:1px solid var(--d-line2);border-radius:5px;overflow:visible}
+    .dash-gr-f{height:100%;border-radius:4px;transition:width .7s cubic-bezier(.2,.8,.2,1)}
+    .dash-gr-goal{position:absolute;top:-5px;bottom:-5px;width:0;border-left:2px dashed var(--d-crit);z-index:2;pointer-events:none}
+    .dash-gr-goal::before{content:"";position:absolute;top:-8px;left:-6px;border-left:6px solid transparent;border-right:6px solid transparent;border-top:8px solid var(--d-crit)}
+    .dash-gr-miss{font-size:12px;color:var(--d-crit);margin-top:7px;font-weight:600}
+    .dash-tbl-wrap{overflow-x:auto;margin:0 -20px -18px}
+    .dash-table{width:100%;border-collapse:collapse;min-width:1100px}
+    .dash-table thead th{font-size:11px;font-weight:600;color:var(--text-muted);text-align:left;padding:11px 14px;background:var(--d-card2);border-top:1px solid var(--panel-border);border-bottom:1px solid var(--panel-border);white-space:nowrap}
+    .dash-table thead th:first-child,.dash-table tbody td:first-child{padding-left:20px}
+    .dash-table thead th:last-child,.dash-table tbody td:last-child{padding-right:20px}
+    .dash-table tbody td{padding:12px 14px;border-bottom:1px solid var(--d-line2);font-size:12px;vertical-align:middle}
+    .dash-table tbody tr:hover{background:var(--d-row-hover)}
+    .dash-table tbody tr.crit{background:var(--d-row-crit)}
+    .dash-badge{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:6px;font-size:10.5px;font-weight:700}
+    .dash-b-A{background:var(--d-ba);color:var(--d-bat)}.dash-b-B{background:var(--d-bb);color:var(--d-bbt)}.dash-b-C{background:var(--d-bc);color:var(--d-bct)}
+    .dash-pill{display:inline-block;padding:3px 9px;border-radius:6px;font-size:10.5px;font-weight:700}
+    .dash-p-crit{background:var(--d-ba);color:var(--d-bat)}.dash-p-warn{background:var(--d-bb);color:var(--d-bbt)}.dash-p-ok{background:var(--d-bc);color:var(--d-bct)}
+    .dash-lt{display:flex;align-items:center;gap:8px;min-width:110px}
+    .dash-lt-t{flex:1;height:5px;background:var(--d-card2);border-radius:3px;overflow:hidden}
+    .dash-lt-f{height:100%;border-radius:3px}
+    .dash-empty{padding:28px 16px;text-align:center;color:var(--text-muted);font-size:13px}
+    @media (max-width:1280px){ .dash-kpis{grid-template-columns:repeat(3,1fr)} .dash-row{grid-template-columns:1fr} }
+    @media (max-width:680px){ .dash-kpis{grid-template-columns:repeat(2,1fr)} }
+  </style>
+</head>
+<body>
+<div class="app">
+  <aside>
+    <div class="logo"><div class="logo-icon">📦</div><div><h1>Spare Parts</h1><p>계전파트 관리</p></div></div>
+    <nav>
+      <a href="#" data-page="dashboard" class="active">📊 대시보드</a>
+      <a href="#" data-page="grade">📋 등급기준표</a>
+      <a href="#" data-page="ledger">📝 관리대장</a>
+    </nav>
+    <button type="button" class="theme-toggle" aria-label="테마 전환">
+      <svg class="ico-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+      <svg class="ico-moon" viewBox="0 0 24 24"><path d="M21 14.5A8.5 8.5 0 1 1 9.5 3 7 7 0 0 0 21 14.5z"/></svg>
+      <span>테마 전환</span>
+    </button>
+    <button class="btn-upload" id="btnUpload">⬆️ 엑셀 불러오기</button>
+    <input type="file" id="fileInput" accept=".xlsx,.xlsm" />
+    <div class="file-info" id="fileInfo"></div>
+  </aside>
+  <main>
+    <section id="page-dashboard" class="page active">
+      <header class="dash-top">
+        <div>
+          <h2 class="page-title" style="margin-bottom:4px">계전파트 Spare Parts 재고현황</h2>
+          <p class="page-desc" style="margin-bottom:0">재고 보유율 · 등급별 확보 · Long Delivery 추적</p>
+        </div>
+        <div class="dash-stamps">
+          <div class="dash-stamp">최종 갱신<b id="dashUpd">—</b></div>
+          <div class="dash-stamp">장납기 기준<b>L/T ≥ 12주</b></div>
+        </div>
+      </header>
+      <section class="dash-kpis" id="dashStats"></section>
+      <div id="dashAlert"></div>
+      <section class="dash-row">
+        <div class="dash-card">
+          <div class="dash-card-h"><b>현재 재고보유 현황</b><i>전 등급 · 관리대장 등록 품목 수 기준 (미관리 포함 표시)</i></div>
+          <div class="dash-dn-wrap">
+            <svg id="dashDonut" width="210" height="210" viewBox="0 0 210 210" role="img" aria-label="재고 상태 도넛"></svg>
+            <div class="dash-legend" id="dashDonutLegend"></div>
+          </div>
+        </div>
+        <div class="dash-card">
+          <div class="dash-card-h"><b>등급별 확보율</b><i>붉은 점선·화살표 = 등급별 목표 (A 100% · B 95% · C 90%)</i></div>
+          <div class="dash-grades" id="dashGrades"></div>
+        </div>
+      </section>
+      <div class="dash-card">
+        <div class="dash-card-h"><b>Long Delivery / 긴급재고 확보 품목 추적</b><i>추적관리 대상 · 결품 → 미달 → 납기 긴 순 자동 정렬</i></div>
+        <div class="dash-tbl-wrap">
+          <table class="dash-table">
+            <thead><tr>
+              <th>자재 No.</th><th>설비명</th><th>Model명</th><th>Maker</th>
+              <th style="text-align:center">등급</th>
+              <th style="text-align:center">보유 / 대상</th>
+              <th>보관 위치</th><th>납기(weeks)</th><th style="text-align:center">상태</th><th>조치사항</th>
+            </tr></thead>
+            <tbody id="trackTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="page-grade" class="page">
+      <h2 class="page-title">중요도 산정 등급기준표</h2>
+      <p class="page-desc">Weight Factor(%) → W.F → 환산점수 (원점수÷15×W.F)</p>
+      <div class="panel">
+        <div class="panel-head"><h3>평가 항목 기준</h3></div>
+        <div class="panel-body" id="criteriaTable"></div>
+        <div class="alert" id="weightAlert"></div>
+        <div class="wf-rules" id="wfRules"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h3>환산점수표</h3><p>W.F = Weight Factor(%) · 환산 = (원점수÷15)×W.F</p></div>
+        <div class="panel-body" id="conversionTable"></div>
+      </div>
+      <div class="grid-2">
+        <div class="panel"><div class="panel-head"><h3>등급 &amp; 재고 정책</h3></div><div class="panel-body" id="policyTable"></div></div>
+        <div class="panel"><div class="panel-head"><h3>총점 요약</h3></div><div class="panel-body summary-box" id="scoreSummary"></div></div>
+      </div>
+    </section>
+
+    <section id="page-ledger" class="page">
+      <h2 class="page-title">E&amp;I Spare Parts 관리대장</h2>
+      <p class="page-desc">설비등급/점수 입력 → 환산총점·등급·안전재고(최소재고) 자동 산정</p>
+      <div class="stats" id="ledgerStats"></div>
+      <div class="ledger-toolbar">
+        <div class="search-wrap"><input type="search" id="ledgerSearch" placeholder="자재번호, 설비명, 등급 검색..." /></div>
+        <button class="btn" id="btnAddRow">+ 행 추가</button>
+        <button class="btn btn-danger" id="btnDeleteRows">− 선택 행 삭제</button>
+        <button class="btn btn-export" id="btnExport">📊 Export</button>
+      </div>
+      <div class="panel">
+        <div class="ledger-scroll-hint">← 좌우 스크롤 →</div>
+        <div class="ledger-scroll"><div class="panel-body" id="ledgerTable"></div></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+const STORAGE_KEY = 'spare-parts-html-v4';
+
+const DEFAULT_CRITERIA = [
+  { id:'equip', order:1, name:'설비등급',
+    criteria5:'C급 설비', criteria10:'B급 설비', criteria15:'A급 설비',
+    conversionLogic:'등급(A/B/C) → 15/10/5점 매핑', remark:'설비 자체 중요도', weightPercent:20 },
+  { id:'production', order:2, name:'생산영향',
+    criteria5:'생산영향 없음 또는 경미', criteria10:'Load Down·품질영향 또는 재가동 지연', criteria15:'생산정지·장시간 셧다운 우려',
+    conversionLogic:'입력점수 × Factor', remark:'생산 손실 영향', weightPercent:30 },
+  { id:'delivery', order:3, name:'납기',
+    criteria5:'납기 1M이하 또는 대체품 확보 용이', criteria10:'납기 1M~6M이하', criteria15:'납기 6M이상 또는 해외 조달',
+    conversionLogic:'입력점수 × Factor', remark:'기존 조달/복구시간 → 납기', weightPercent:30 },
+  { id:'failure', order:4, name:'고장빈도',
+    criteria5:'1회/1년', criteria10:'1회/3개월', criteria15:'1회/1개월',
+    conversionLogic:'입력점수 × Factor', remark:'고장횟수 기준', weightPercent:20 },
+];
+
+const WF_RULES_HTML = `<h4>Weight Factor</h4>
+<p><strong>※ Weight Factor 운영 기준</strong></p>
+<ol>
+  <li>Weight Factor는 각 평가항목의 상대 중요도를 반영하는 값으로 한다.</li>
+  <li>Weight Factor의 입력 범위는 최소 10%, 최대 50%로 제한한다.</li>
+  <li>특정 항목이 전체 평가를 과도하게 지배하지 않도록 최대 가중치와 최소 가중치의 비율은 5배 이내로 관리한다.</li>
+</ol>`;
+
+const GRADE_POLICIES = [
+  { grade:'A', minScore:75, label:'A등급 (≥75점)', inventoryPolicy:'Site Stock', minInventory:1, reviewCycle:'Quarterly' },
+  { grade:'B', minScore:50, label:'B등급 (50~75점)', inventoryPolicy:'Central / Site Near', minInventory:0, reviewCycle:'Semiannual' },
+  { grade:'C', minScore:0, label:'C등급 (<50점)', inventoryPolicy:'Order / Repair Pool', minInventory:0, reviewCycle:'Annual' },
+];
+
+function convertedScore(raw, wfVal) { return Math.round((raw / 15 * wfVal) * 10) / 10; }
+function wf(pct) { const n = pct > 0 && pct <= 1 ? pct * 100 : pct; return Math.round(n * 10) / 10; }
+function equipToScore(g) { return g==='A'?15:g==='B'?10:g==='C'?5:null; }
+function calcTotal(equip, prod, del, fail, items) {
+  const m = Object.fromEntries(items.map(i=>[i.id, i.weightPercent]));
+  const s = (sc, id) => sc==null?0:convertedScore(sc, wf(m[id]||0));
+  return Math.round((s(equip,'equip')+s(prod,'production')+s(del,'delivery')+s(fail,'failure'))*10)/10;
+}
+function calcGrade(total) { if(total>=75)return'A'; if(total>=50)return'B'; if(total>0)return'C'; return''; }
+function getPolicy(g) { return GRADE_POLICIES.find(p=>p.grade===g); }
+
+function recalcItem(item, items) {
+  const eq = item.equipGrade ? equipToScore(item.equipGrade) : item.equipGradeScore;
+  const total = calcTotal(eq, item.productionImpact, item.leadTime, item.failureFrequency, items);
+  const fg = calcGrade(total);
+  const pol = fg ? getPolicy(fg) : null;
+  const prevGrade = item.finalGrade;
+  let minInv = item.minInventory;
+  if (fg === 'A') {
+    if (prevGrade !== 'A' && !item.minInventoryManual) minInv = 1;
+  } else if (!item.minInventoryManual) {
+    minInv = pol?.minInventory ?? 0;
+  }
+  return { ...item, equipGradeScore:eq, totalScore:total, finalGrade:fg,
+    inventoryPolicy: pol?.inventoryPolicy||'', minInventory: minInv, reviewCycle: pol?.reviewCycle||'',
+    isLongDelivery: item.leadTime === 15,
+    deliveryWeeks: item.leadTime === 15 ? (item.deliveryWeeks || '') : '' };
+}
+
+function uid() { return 'id-'+Math.random().toString(36).slice(2,11); }
+
+function emptyItem() {
+  return { id:uid(), equipCategory:'', materialNo:'', equipmentName:'', modelName:'', maker:'', equipGrade:'', equipGradeScore:null,
+    productionImpact:null, leadTime:null, failureFrequency:null, totalScore:0, finalGrade:'', inventoryPolicy:'',
+    minInventory:0, minInventoryManual:false, reviewCycle:'', remarks:'', currentStock:0,
+    trackManage:false, deliveryWeeks:'', isLongDelivery:false };
+}
+
+function sampleLedger(items) {
+  const samples = [
+    { equipCategory:'제어', materialNo:'822478', equipmentName:'Power Supply 24VDC, 10 Slot Rack', modelName:'TC-FPDXX2', maker:'Honeywell', equipGrade:'A', productionImpact:15, leadTime:15, failureFrequency:15, currentStock:5, minInventory:1, trackManage:true, deliveryWeeks:'12', remarks:'Main protection relay' },
+    { equipCategory:'계기', materialNo:'822479', equipmentName:'Analog Input Module, 16ch', modelName:'TC-AI0814', maker:'Honeywell', equipGrade:'B', productionImpact:10, leadTime:10, failureFrequency:5, currentStock:2, minInventory:2, minInventoryManual:true, remarks:'Check SIS relevance' },
+    { equipCategory:'전기', materialNo:'822480', equipmentName:'Digital Output Module, 32ch', modelName:'TC-DO032', maker:'Honeywell', equipGrade:'C', productionImpact:5, leadTime:5, failureFrequency:5, currentStock:0, minInventory:0 },
+  ];
+  return samples.map(s => recalcItem({ ...emptyItem(), ...s }, items));
+}
+
+function loadState() {
+  try {
+    for (const key of ['spare-parts-html-v4', 'spare-parts-html-v3']) {
+      const r = localStorage.getItem(key);
+      if (r) return JSON.parse(r);
+    }
+  } catch(e){}
+  const items = JSON.parse(JSON.stringify(DEFAULT_CRITERIA));
+  return { fileName:'', criteria:items, ledgerItems:sampleLedger(items) };
+}
+function saveState() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+
+let state = loadState();
+state.criteria.forEach(c => {
+  if (c.criteria10 && c.criteria10.includes('감산')) c.criteria10 = c.criteria10.replace('감산', 'Load Down');
+});
+state.ledgerItems = state.ledgerItems.map(i => recalcItem(i, state.criteria));
+saveState();
+const chartStock = { current: null };
+const chartGrade = { current: null };
+
+/** 전 등급 재고 통계 — 수량 기준 % 산출 */
+function calcStockStats() {
+  const stockItems = state.ledgerItems.filter(i => (Number(i.minInventory) || 0) > 0);
+  let targetTotal = 0, countedCurrent = 0;
+  let normalQty = 0, shortQty = 0, zeroQty = 0;
+  stockItems.forEach(i => {
+    const safety = Number(i.minInventory) || 0;
+    const current = Number(i.currentStock) || 0;
+    const counted = Math.min(current, safety);
+    targetTotal += safety;
+    countedCurrent += counted;
+    if (current >= safety) normalQty += safety;
+    else if (current > 0) { normalQty += current; shortQty += (safety - current); }
+    else zeroQty += safety;
+  });
+  const rate = targetTotal > 0 ? Math.round((countedCurrent / targetTotal) * 1000) / 10 : 0;
+  const pct = (q) => targetTotal > 0 ? Math.round((q / targetTotal) * 1000) / 10 : 0;
+  return {
+    stockItems, targetTotal, countedCurrent, rate,
+    pctNormal: pct(normalQty), pctShort: pct(shortQty), pctZero: pct(zeroQty),
+    totalRegistered: state.ledgerItems.length
+  };
+}
+
+document.querySelectorAll('nav a').forEach(a => {
+  a.addEventListener('click', e => {
+    e.preventDefault();
+    document.querySelectorAll('nav a').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));
+    a.classList.add('active');
+    document.getElementById('page-'+a.dataset.page).classList.add('active');
+    renderAll();
+  });
+});
+
+document.getElementById('btnUpload').onclick = () => document.getElementById('fileInput').click();
+document.getElementById('fileInput').onchange = async e => {
+  const file = e.target.files[0]; if(!file) return;
+  try {
+    const wb = XLSX.read(await file.arrayBuffer(), { type:'array' });
+    importExcel(wb, file.name);
+    alert('엑셀 불러오기 완료: '+file.name);
+  } catch(err) { alert('엑셀 읽기 실패: '+err.message); }
+  e.target.value = '';
+};
+
+function importExcel(wb, fileName) {
+  const names = wb.SheetNames;
+  let gradeIdx = names.findIndex(n=>/등급|기준/i.test(n)); if(gradeIdx<0) gradeIdx=1;
+  let ledgerIdx = names.findIndex(n=>/관리대장|관리/i.test(n)); if(ledgerIdx<0) ledgerIdx=2;
+  const gradeSheet = wb.Sheets[names[gradeIdx]];
+  if(gradeSheet) {
+    ['설비등급','생산영향','납기','고장빈도'].forEach((name,i) => {
+      for(let r=1;r<=30;r++){
+        const rowText = Array.from({length:8},(_,c)=>{ const cell=gradeSheet[XLSX.utils.encode_cell({r:r-1,c})]; return cell?String(cell.v||''):''; }).join('|');
+        if(rowText.includes(name)){
+          const wfCell = gradeSheet[XLSX.utils.encode_cell({r:r-1,c:4})];
+          if(wfCell && wfCell.v!=null){ let v=Number(wfCell.v); if(v<=1)v*=100; state.criteria[i].weightPercent=v; }
+        }
+      }
+    });
+  }
+  const ledgerSheet = wb.Sheets[names[ledgerIdx]];
+  if(ledgerSheet) {
+    const rows = XLSX.utils.sheet_to_json(ledgerSheet, { header:1, defval:'' });
+    let headerRow = 0;
+    for(let i=0;i<Math.min(15,rows.length);i++){
+      if((rows[i]||[]).join('|').match(/자재|material|설비명/i)) { headerRow=i; break; }
+    }
+    const headers = (rows[headerRow]||[]).map(h=>String(h).toLowerCase().trim());
+    const col = k => headers.findIndex(h=>h.includes(k));
+    const imported = [];
+    for(let r=headerRow+1;r<rows.length;r++){
+      const row=rows[r]; if(!row) continue;
+      const cMat=col('자재')>=0?col('자재'):col('material');
+      const cName=col('설비명')>=0?col('설비명'):col('equipment');
+      if(!row[cMat]&&!row[cName]) continue;
+      const parseSc = v => { const n=Number(v); return n===5||n===10||n===15?n:null; };
+      const eg = String(row[col('설비등급')]||row[headers.findIndex(h=>h==='설비등급')]||'').toUpperCase().trim();
+      imported.push(recalcItem({ ...emptyItem(),
+        materialNo:String(row[cMat]||''), equipmentName:String(row[cName]||''),
+        modelName:String(row[col('model')]||''), maker:String(row[col('maker')]||''),
+        equipGrade:['A','B','C'].includes(eg)?eg:'',
+        productionImpact:parseSc(row[col('생산')]), leadTime:parseSc(row[col('납기')]), failureFrequency:parseSc(row[col('고장')]),
+        currentStock:Number(row[col('현재')]||row[col('current')]||0)||0,
+        remarks:String(row[col('비고')]||''),
+      }, state.criteria));
+    }
+    if(imported.length) state.ledgerItems = imported;
+  }
+  state.fileName = fileName; saveState(); renderAll();
+}
+
+const EQUIP_CATEGORIES = ['제어','전기','계기','PKG'];
+
+function equipCategorySelect(val, id) {
+  return `<select class="ledger-select" data-id="${id}" data-field="equipCategory" onchange="onLedgerInput(this)">
+    <option value="">-</option>
+    ${EQUIP_CATEGORIES.map(c=>`<option value="${c}" ${val===c?'selected':''}>${c}</option>`).join('')}
+  </select>`;
+}
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+
+function exportToExcel() {
+  const rows = state.ledgerItems.map(i => ({
+    '추적관리': i.trackManage ? 'Y' : 'N',
+    '설비구분': i.equipCategory || '',
+    '자재 No.': i.materialNo,
+    '설비명': i.equipmentName,
+    'Model명': i.modelName,
+    'Maker': i.maker,
+    '설비등급': i.equipGrade,
+    '설비등급점수': i.equipGradeScore ?? '',
+    '생산영향': i.productionImpact ?? '',
+    '납기': i.leadTime ?? '',
+    '고장빈도': i.failureFrequency ?? '',
+    'Long Delivery': i.leadTime === 15 ? 'Y' : 'N',
+    '납기(weeks)': i.leadTime === 15 ? (i.deliveryWeeks || '') : '',
+    '환산총점': i.totalScore,
+    '등급': i.finalGrade,
+    '권장재고정책': i.inventoryPolicy,
+    '재고관리 대상수량': i.minInventory,
+    '현재재고': i.currentStock ?? 0,
+    '검토주기': i.reviewCycle,
+    '비고': i.remarks,
+  }));
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, '관리대장');
+  XLSX.writeFile(wb, 'SpareParts_관리대장_' + new Date().toISOString().slice(0,10).replace(/-/g,'') + '.xlsx');
+}
+
+function badgeHtml(g) { return `<span class="badge ${g?`badge-${g}`:'badge-none'}">${g||'-'}</span>`; }
+function scoreBarHtml(score) {
+  const pct = Math.min(100, Math.max(0, score));
+  const cls = score>=75?'high':score>=50?'mid':'low';
+  return `<div class="score-bar"><div class="score-bar-fill ${cls}" style="width:${pct}%"></div><div class="score-bar-text">${score>0?score.toFixed(1):'-'}</div></div>`;
+}
+function scoreSelect(val, id, field) {
+  return `<select class="ledger-select" data-id="${id}" data-field="${field}" onchange="onLedgerChange(this)">
+    <option value="">-</option><option value="5" ${val===5?'selected':''}>5</option><option value="10" ${val===10?'selected':''}>10</option><option value="15" ${val===15?'selected':''}>15</option></select>`;
+}
+function gradeSelect(val, id) {
+  return `<select class="ledger-select" data-id="${id}" data-field="equipGrade" onchange="onLedgerChange(this)">
+    <option value="">-</option><option value="A" ${val==='A'?'selected':''}>A</option><option value="B" ${val==='B'?'selected':''}>B</option><option value="C" ${val==='C'?'selected':''}>C</option></select>`;
+}
+
+window.onLedgerChange = function(el) {
+  const item = state.ledgerItems.find(i=>i.id===el.dataset.id); if(!item) return;
+  let v = el.value;
+  if(['productionImpact','leadTime','failureFrequency'].includes(el.dataset.field)) v = v?Number(v):null;
+  item[el.dataset.field] = v;
+  Object.assign(item, recalcItem(item, state.criteria));
+  saveState(); renderLedger(); renderDashboard();
+};
+
+window.onLedgerInput = function(el) {
+  const item = state.ledgerItems.find(i=>i.id===el.dataset.id); if(!item) return;
+  item[el.dataset.field] = el.value; saveState();
+};
+
+window.onLedgerNumber = function(el) {
+  const item = state.ledgerItems.find(i=>i.id===el.dataset.id); if(!item) return;
+  const n = Number(el.value.replace(/[^0-9]/g,''))||0;
+  item[el.dataset.field] = n;
+  if (el.dataset.field === 'minInventory') item.minInventoryManual = true;
+  saveState(); renderDashboard();
+};
+
+window.onTrackCheck = function(el) {
+  const item = state.ledgerItems.find(i=>i.id===el.dataset.id); if(!item) return;
+  item.trackManage = el.checked; saveState(); renderDashboard();
+};
+
+window.onDeliveryWeeks = function(el) {
+  const item = state.ledgerItems.find(i=>i.id===el.dataset.id); if(!item) return;
+  if (item.leadTime !== 15) { item.deliveryWeeks = ''; saveState(); renderDashboard(); return; }
+  item.deliveryWeeks = el.value; saveState(); renderDashboard();
+};
+
+window.deleteRow = function(id) {
+  if (!confirm('이 행을 삭제하시겠습니까?')) return;
+  state.ledgerItems = state.ledgerItems.filter(i=>i.id!==id);
+  saveState(); renderAll();
+};
+
+window.deleteSelectedRows = function() {
+  const checked = [...document.querySelectorAll('.row-select:checked')].map(el => el.dataset.id);
+  if (!checked.length) { alert('삭제할 행을 선택해주세요.'); return; }
+  if (!confirm(`선택한 ${checked.length}개 행을 삭제하시겠습니까?`)) return;
+  const ids = new Set(checked);
+  state.ledgerItems = state.ledgerItems.filter(i => !ids.has(i.id));
+  saveState(); renderAll();
+};
+window.onWeightChange = function(id, val) {
+  const item = state.criteria.find(i=>i.id===id); if(!item) return;
+  item.weightPercent = Math.max(0, Math.min(100, Number(val)||0));
+  state.ledgerItems = state.ledgerItems.map(i=>recalcItem(i, state.criteria));
+  saveState(); renderAll();
+};
+
+document.getElementById('btnAddRow').onclick = () => {
+  state.ledgerItems.push(recalcItem(emptyItem(), state.criteria));
+  saveState(); renderLedger();
+};
+document.getElementById('btnDeleteRows').onclick = deleteSelectedRows;
+document.getElementById('btnExport').onclick = exportToExcel;
+document.getElementById('ledgerSearch').oninput = renderLedger;
+
+const piePctPlugin = {
+  id: 'piePctLabels',
+  afterDraw(chart) {
+    const { ctx, data } = chart;
+    const meta = chart.getDatasetMeta(0);
+    meta.data.forEach((arc, i) => {
+      const val = data.datasets[0].data[i];
+      if (!val || val < 0.05) return;
+      const pos = arc.tooltipPosition();
+      ctx.save();
+      ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--pie-label').trim() || '#fff';
+      ctx.font = '600 11px Segoe UI, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.shadowColor = 'rgba(0,0,0,.35)';
+      ctx.shadowBlur = 4;
+      ctx.fillText(fmtPct(val), pos.x, pos.y);
+      ctx.restore();
+    });
+  }
+};
+
+function fmtPct(n) { return n.toFixed(1).replace(/\.0$/, '') + '%'; }
+
+function footnoteDesc(subLines) {
+  if (!subLines || !subLines.length) return '';
+  return (Array.isArray(subLines) ? subLines : [subLines]).filter(Boolean).join(' ');
+}
+
+function footnoteHtml(rows) {
+  return `<div class="chart-footnote">${rows.map(r => {
+    const desc = footnoteDesc(r.subLines);
+    return `<div class="fn-item"><span class="fn-dot" style="background:${r.color}"></span><span class="fn-label">${r.title}</span>${desc ? `<span class="fn-desc">${desc}</span>` : ''}</div>`;
+  }).join('')}</div>`;
+}
+
+function drawCallouts(chart, rows, areaId) {
+  const wrap = document.querySelector(`#${areaId} .chart-callout-wrap`);
+  const svg = document.getElementById(areaId + '-leaders');
+  const layer = document.getElementById(areaId + '-callouts');
+  if (!wrap || !svg || !layer) return;
+  const meta = chart.getDatasetMeta(0);
+  const w = wrap.clientWidth;
+  const h = wrap.clientHeight;
+  const PAD = 6;
+  const LABEL_W = 96;
+  const LABEL_H = 36;
+  const MIN_GAP = LABEL_H * 0.85;
+  svg.setAttribute('width', w);
+  svg.setAttribute('height', h);
+  svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+  layer.innerHTML = '';
+
+  const items = [];
+  meta.data.forEach((arc, i) => {
+    const row = rows[i];
+    if (!row || !row.pct || row.pct < 0.05) return;
+    const { x, y, startAngle, endAngle, outerRadius } = arc;
+    const mid = (startAngle + endAngle) / 2;
+    const cos = Math.cos(mid);
+    const sin = Math.sin(mid);
+    const isRight = cos >= 0;
+    const spaceOut = isRight ? (w - PAD - LABEL_W - x) : (x - PAD - LABEL_W);
+    const armOut = Math.max(10, Math.min(24, spaceOut * 0.45, outerRadius * 0.28));
+    const armMid = Math.max(8, Math.min(18, outerRadius * 0.18));
+    const x1 = x + cos * outerRadius;
+    const y1 = y + sin * outerRadius;
+    const x2 = x + cos * (outerRadius + armMid);
+    const y2 = y + sin * (outerRadius + armMid);
+    const x3 = x + cos * (outerRadius + armOut);
+    const y3 = y + sin * (outerRadius + armOut);
+    let x4 = x3 + (isRight ? 14 : -14);
+    let y4 = y3;
+    if (isRight) {
+      const maxAnchor = w - PAD - LABEL_W - 4;
+      x4 = Math.min(Math.max(x4, PAD + 4), maxAnchor);
+    } else {
+      const minAnchor = PAD + LABEL_W + 4;
+      x4 = Math.max(Math.min(x4, w - PAD - 4), minAnchor);
+    }
+    y4 = Math.max(PAD + LABEL_H / 2, Math.min(h - PAD - LABEL_H / 2, y4));
+    items.push({ x1, y1, x2, y2, x3, y3, x4, y4, isRight, row });
+  });
+
+  ['right', 'left'].forEach(side => {
+    const group = items.filter(it => (side === 'right') === it.isRight).sort((a, b) => a.y4 - b.y4);
+    for (let i = 1; i < group.length; i++) {
+      if (group[i].y4 - group[i - 1].y4 < MIN_GAP) group[i].y4 = group[i - 1].y4 + MIN_GAP;
+    }
+    for (let i = group.length - 1; i >= 0; i--) {
+      const maxY = h - PAD - LABEL_H / 2;
+      if (group[i].y4 > maxY) group[i].y4 = maxY;
+      if (i > 0 && group[i].y4 - group[i - 1].y4 < MIN_GAP) group[i - 1].y4 = group[i].y4 - MIN_GAP;
+    }
+    for (let i = 0; i < group.length; i++) {
+      const minY = PAD + LABEL_H / 2;
+      if (group[i].y4 < minY) group[i].y4 = minY;
+      if (i > 0 && group[i].y4 - group[i - 1].y4 < MIN_GAP) group[i].y4 = group[i - 1].y4 + MIN_GAP;
+    }
+  });
+
+  let paths = '';
+  items.forEach(it => {
+    const lineX3 = it.isRight ? Math.min(it.x3, it.x4 - 2) : Math.max(it.x3, it.x4 + 2);
+    paths += `<polyline points="${it.x1},${it.y1} ${it.x2},${it.y2} ${lineX3},${it.y4} ${it.x4},${it.y4}" fill="none" stroke="${getComputedStyle(document.documentElement).getPropertyValue('--callout-stroke').trim() || 'rgba(148,163,184,0.55)'}" stroke-width="1"/>`;
+    const el = document.createElement('div');
+    el.className = 'callout-label';
+    el.style.left = it.x4 + 'px';
+    el.style.top = it.y4 + 'px';
+    el.style.textAlign = it.isRight ? 'left' : 'right';
+    el.style.transform = `translate(${it.isRight ? '4px' : '-4px'}, -50%) translate(${it.isRight ? '0' : '-100%'}, 0)`;
+    el.innerHTML = `<div class="name">${it.row.title}</div><div class="pct" style="color:${it.row.color}">${fmtPct(it.row.pct)}</div>`;
+    layer.appendChild(el);
+  });
+  svg.innerHTML = paths;
+}
+
+function renderCalloutDonutChart(areaId, chartRef, rows, centerHtml, tooltipFn, gradientPairs) {
+  const area = document.getElementById(areaId);
+  area.innerHTML = `<div class="chart-callout-wrap">
+    <canvas id="${areaId}-canvas"></canvas>
+    <svg class="chart-leaders" id="${areaId}-leaders"></svg>
+    <div class="chart-center">${centerHtml}</div>
+    <div class="callout-layer" id="${areaId}-callouts"></div>
+  </div>${footnoteHtml(rows)}`;
+  if (chartRef.current) chartRef.current.destroy();
+  const calloutPlugin = {
+    id: 'calloutLabels_' + areaId,
+    afterDraw(chart) { drawCallouts(chart, rows, areaId); }
+  };
+  const gradientPlugin = gradientPairs ? {
+    id: 'pieGradients_' + areaId,
+    beforeDatasetsDraw(chart) {
+      const { ctx, chartArea } = chart;
+      if (!chartArea) return;
+      const cx = (chartArea.left + chartArea.right) / 2;
+      const cy = (chartArea.top + chartArea.bottom) / 2;
+      const r = Math.max(chartArea.right - chartArea.left, chartArea.bottom - chartArea.top) / 2;
+      chart.data.datasets[0].backgroundColor = gradientPairs.map(([light, mid]) => {
+        const g = ctx.createRadialGradient(cx, cy, r * 0.12, cx, cy, r);
+        g.addColorStop(0, light);
+        g.addColorStop(0.65, mid);
+        g.addColorStop(1, mid);
+        return g;
+      });
+    }
+  } : null;
+  const plugins = [piePctPlugin, calloutPlugin];
+  if (gradientPlugin) plugins.unshift(gradientPlugin);
+  chartRef.current = new Chart(document.getElementById(areaId + '-canvas'), {
+    type: 'doughnut',
+    data: { labels: rows.map(r => r.title), datasets: [{ data: rows.map(r => r.pct), backgroundColor: rows.map(r => r.color), borderWidth: 0 }] },
+    options: {
+      cutout: '54%',
+      layout: { padding: 28 },
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: tooltipFn ? { callbacks: { label: tooltipFn } } : { enabled: true }
+      }
+    },
+    plugins
+  });
+}
+
+function renderStockChart(st) {
+  const dark = SparePartsTheme.getTheme() === 'dark';
+  const colors = dark ? ['#0f766e', '#5eead4', '#94a3b8'] : ['#0D9488', '#5EEAD4', '#94A3B8'];
+  const rows = [
+    { color: colors[0], title: '정상 확보', pct: st.pctNormal, subLines: ['재고관리 대상수량', '이상 확보'] },
+    { color: colors[1], title: '안전재고 미달', pct: st.pctShort, subLines: ['보유 < 재고관리', '대상수량'] },
+    { color: colors[2], title: '결품 (보유 0)', pct: st.pctZero, subLines: ['즉시 조달', '필요'] },
+  ];
+  renderCalloutDonutChart('stockChartArea', chartStock, rows,
+    `<div class="big">${st.rate}%</div><div class="sub">재고 보유율</div>`,
+    c => c.label + ': ' + c.parsed.toFixed(1) + '%');
+}
+
+function renderGradeChart(grades, total) {
+  const dark = SparePartsTheme.getTheme() === 'dark';
+  const labelColors = dark ? ['#86efac', '#fdba74', '#fca5a5'] : ['#059669', '#D97706', '#E11D48'];
+  const gradeGradients = dark ? [
+    ['#ecfdf5', '#86efac'],
+    ['#fff7ed', '#fdba74'],
+    ['#fef2f2', '#fca5a5'],
+  ] : [
+    ['#ecfdf5', '#6EE7B7'],
+    ['#fff7ed', '#FDBA74'],
+    ['#fef2f2', '#FCA5A5'],
+  ];
+  const pct = (n) => total > 0 ? Math.round((n / total) * 1000) / 10 : 0;
+  const rows = [
+    { color: labelColors[0], title: 'A등급', pct: pct(grades.A), subLines: ['Site Stock 대상', grades.A + '품목'] },
+    { color: labelColors[1], title: 'B등급', pct: pct(grades.B), subLines: ['Central / Site Near', grades.B + '품목'] },
+    { color: labelColors[2], title: 'C등급', pct: pct(grades.C), subLines: ['Order / Repair Pool', grades.C + '품목'] },
+  ];
+  renderCalloutDonutChart('gradeChartArea', chartGrade, rows,
+    `<div class="big">${total}</div><div class="sub">품목</div>`,
+    c => c.label + ': ' + c.parsed.toFixed(1) + '% (' + rows[c.dataIndex].subLines[1] + ')',
+    gradeGradients);
+}
+
+function renderGrade() {
+  const sum = state.criteria.reduce((s,i)=>s+i.weightPercent,0);
+  const conv = state.criteria.map(it => { const w=wf(it.weightPercent); return {...it,w,c5:convertedScore(5,w),c10:convertedScore(10,w),c15:convertedScore(15,w)}; });
+  const maxSum = conv.reduce((s,r)=>s+r.c15,0);
+  const minTotal = calcTotal(5,5,5,5,state.criteria);
+
+  document.getElementById('criteriaTable').innerHTML = `<table>
+    <thead><tr><th>항목</th><th>15점 기준</th><th>10점 기준</th><th>5점 기준</th><th>Weight Factor</th><th>환산 로직</th><th>비고</th></tr></thead>
+    <tbody>${state.criteria.map(it=>`<tr><td><b>${it.order}. ${it.name}</b></td><td>${it.criteria15}</td><td>${it.criteria10}</td><td>${it.criteria5}</td>
+      <td><input class="wf-input" type="number" value="${it.weightPercent}" onchange="onWeightChange('${it.id}',this.value)"/> %</td>
+      <td style="font-size:11px;color:#94a3b8">${it.conversionLogic}</td><td style="font-size:11px;color:#64748b">${it.remark}</td></tr>`).join('')}</tbody></table>`;
+
+  document.getElementById('weightAlert').className = 'alert '+(Math.abs(sum-100)<0.01?'ok':'err');
+  document.getElementById('weightAlert').textContent = `Weight Factor 합계: ${sum.toFixed(1)}%${Math.abs(sum-100)<0.01?' ✓':' (100% 필요)'}`;
+  document.getElementById('wfRules').innerHTML = WF_RULES_HTML;
+
+  document.getElementById('conversionTable').innerHTML = `<table>
+    <thead><tr><th>항목</th><th>15점</th><th>10점</th><th>5점</th><th>W.F</th><th>15점 환산</th><th>10점 환산</th><th>5점 환산</th><th>최대가중점수</th></tr></thead>
+    <tbody>${conv.map(r=>`<tr><td><b>${r.order}. ${r.name}</b></td><td class="num">15</td><td class="num">10</td><td class="num">5</td>
+      <td class="num num-blue">${r.w.toFixed(1)}</td><td class="num num-green">${r.c15.toFixed(1)}</td><td class="num num-green">${r.c10.toFixed(1)}</td><td class="num num-green">${r.c5.toFixed(1)}</td>
+      <td class="num num-violet">${r.c15.toFixed(1)}</td></tr>`).join('')}
+    <tr class="sum-row"><td colspan="8" style="text-align:right">최대가중점수 합계</td><td class="num num-yellow" style="text-align:center">${maxSum.toFixed(1)}</td></tr></tbody></table>`;
+
+  document.getElementById('policyTable').innerHTML = `<table style="min-width:auto"><thead><tr><th>등급</th><th>기준</th><th>재고정책</th><th>안전재고(최소재고)</th></tr></thead>
+    <tbody>${GRADE_POLICIES.map(p=>`<tr><td>${badgeHtml(p.grade)}</td><td>${p.label}</td><td>${p.inventoryPolicy}</td><td style="text-align:center">${p.minInventory}</td></tr>`).join('')}</tbody></table>`;
+
+  document.getElementById('scoreSummary').innerHTML = `
+    <div class="summary-item"><span>최대가중총점</span><strong class="num-yellow">${maxSum.toFixed(1)}</strong></div>
+    <div class="summary-item"><span>최소가중총점 (전항목 5점)</span><strong>${minTotal.toFixed(1)}</strong></div>
+    <div class="note"><b>입력 원칙:</b> 관리대장에서 설비등급(A/B/C)과 생산영향·납기·고장빈도(5/10/15)만 입력하면 환산총점·등급·재고정책이 자동 산정됩니다.</div>`;
+}
+
+function statColors() {
+  const dark = SparePartsTheme.getTheme() === 'dark';
+  return dark
+    ? { main:'#E2E8F0', blue:'#93C5FD', green:'#6EE7B7', violet:'#C4B5FD', a:'#6EE7B7', b:'#FCD34D', c:'#FDBA74', track:'#C4B5FD' }
+    : { main:'#0F172A', blue:'#2563EB', green:'#059669', violet:'#7C3AED', a:'#059669', b:'#B45309', c:'#C2410C', track:'#7C3AED' };
+}
+
+function renderLedger() {
+  const q = (document.getElementById('ledgerSearch').value||'').toLowerCase();
+  const items = state.ledgerItems.filter(i=>!q||[i.materialNo,i.equipmentName,i.modelName,i.maker,i.finalGrade].join(' ').toLowerCase().includes(q));
+  const all = state.ledgerItems;
+
+  const sc = statColors();
+  document.getElementById('ledgerStats').innerHTML = [
+    ['전체', all.length, sc.main], ['A등급', all.filter(i=>i.finalGrade==='A').length, sc.a],
+    ['B등급', all.filter(i=>i.finalGrade==='B').length, sc.b], ['C등급', all.filter(i=>i.finalGrade==='C').length, sc.c],
+    ['추적관리', all.filter(i=>i.trackManage).length, sc.track],
+  ].map(([l,v,c])=>`<div class="stat stat-top"><label>${l}</label><span style="color:${c}">${v}</span></div>`).join('');
+
+  document.getElementById('ledgerTable').innerHTML = `<table class="ledger-table"><thead><tr>
+    <th style="width:44px">선택</th>
+    <th style="width:52px">추적<br>관리</th>
+    <th style="width:72px">설비구분</th>
+    <th style="width:88px">자재 No.</th><th style="width:190px">설비명</th><th style="width:120px">Model명</th><th style="width:90px">Maker</th>
+    <th style="width:68px">설비등급</th><th class="th-auto" style="width:68px">설비등급<br>점수</th>
+    <th style="width:68px">생산영향</th><th style="width:68px">납기</th><th style="width:68px">고장빈도</th>
+    <th style="width:88px">Long<br>Delivery</th><th style="width:80px">납기<br>(weeks)</th>
+    <th style="width:110px">환산총점</th><th style="width:56px">등급</th>
+    <th style="width:130px">권장재고정책</th>
+    <th class="th-auto" style="width:88px">재고관리<br>대상수량</th>
+    <th class="th-auto" style="width:68px">현재<br>재고</th>
+    <th style="width:90px">검토주기</th><th style="width:150px">비고</th><th style="width:52px">삭제</th>
+  </tr></thead><tbody>${items.map(it=>{
+    const isLD = it.leadTime === 15;
+    return `<tr>
+      <td style="text-align:center"><input type="checkbox" class="chk row-select" data-id="${it.id}"/></td>
+      <td style="text-align:center"><input type="checkbox" class="chk" data-id="${it.id}" ${it.trackManage?'checked':''} onchange="onTrackCheck(this)"/></td>
+      <td>${equipCategorySelect(it.equipCategory||'', it.id)}</td>
+      <td><input class="ledger-input" data-id="${it.id}" data-field="materialNo" value="${esc(it.materialNo)}" onchange="onLedgerInput(this)"/></td>
+      <td><input class="ledger-input" data-id="${it.id}" data-field="equipmentName" value="${esc(it.equipmentName)}" onchange="onLedgerInput(this)"/></td>
+      <td><input class="ledger-input" data-id="${it.id}" data-field="modelName" value="${esc(it.modelName)}" onchange="onLedgerInput(this)"/></td>
+      <td><input class="ledger-input" data-id="${it.id}" data-field="maker" value="${esc(it.maker)}" onchange="onLedgerInput(this)"/></td>
+      <td>${gradeSelect(it.equipGrade,it.id)}</td>
+      <td class="auto">${it.equipGradeScore??'-'}</td>
+      <td>${scoreSelect(it.productionImpact,it.id,'productionImpact')}</td>
+      <td>${scoreSelect(it.leadTime,it.id,'leadTime')}</td>
+      <td>${scoreSelect(it.failureFrequency,it.id,'failureFrequency')}</td>
+      <td style="text-align:center">${isLD?'<span class="badge-ld">Long-D</span>':'-'}</td>
+      <td>${isLD?`<input class="ledger-input" style="text-align:center" data-id="${it.id}" value="${esc(it.deliveryWeeks)}" placeholder="weeks" onchange="onDeliveryWeeks(this)"/>`:'-'}</td>
+      <td>${scoreBarHtml(it.totalScore)}</td>
+      <td style="text-align:center">${badgeHtml(it.finalGrade)}</td>
+      <td class="auto">${it.inventoryPolicy||'-'}</td>
+      <td><input class="ledger-input editable-stock" data-id="${it.id}" data-field="minInventory" value="${it.minInventory}" onchange="onLedgerNumber(this)"/></td>
+      <td><input class="ledger-input editable-stock" data-id="${it.id}" data-field="currentStock" value="${it.currentStock||''}" onchange="onLedgerNumber(this)" placeholder="0"/></td>
+      <td class="auto">${it.reviewCycle||'-'}</td>
+      <td><input class="ledger-input" data-id="${it.id}" data-field="remarks" value="${esc(it.remarks)}" onchange="onLedgerInput(this)"/></td>
+      <td style="text-align:center"><button type="button" class="btn-del" title="행 삭제" onclick="deleteRow('${it.id}')">삭제</button></td>
+    </tr>`;}).join('')}</tbody></table>`;
+}
+
+const DASH_GOAL = { A:100, B:95, C:90 };
+const DASH_LT_LONG = 12;
+const DASH_DESC = { '정상':'대상수량 이상 확보', '미달':'보유 < 대상수량', '결품':'즉시 조달 필요', '미관리':'안전재고 미설정' };
+const DASH_ICO = {
+  pkg:'<path d="M3 7.5 12 3l9 4.5v9L12 21l-9-4.5z"/><path d="M3 7.5 12 12l9-4.5M12 12v9"/>',
+  shield:'<path d="M12 3l7.5 3v6c0 4.5-3 7.5-7.5 9-4.5-1.5-7.5-4.5-7.5-9V6z"/><path d="m9 12 2 2 4-4"/>',
+  box:'<rect x="3" y="8" width="18" height="12" rx="2"/><path d="M3 12h18M8 8V4h8v4"/>',
+  gauge:'<path d="M12 21a9 9 0 1 1 9-9"/><path d="m12 13 5-4"/><circle cx="12" cy="13" r="1.4"/>',
+  alert:'<path d="M10.3 4.3 2.6 17.5a2 2 0 0 0 1.7 3h15.4a2 2 0 0 0 1.7-3L13.7 4.3a2 2 0 0 0-3.4 0z"/><path d="M12 9.5v4M12 17.2h.01"/>',
+};
+
+function dashStOf(item) {
+  const target = Number(item.minInventory) || 0;
+  const qty = Number(item.currentStock) || 0;
+  if (target <= 0) return '미관리';
+  if (qty === 0) return '결품';
+  if (qty < target) return '미달';
+  return '정상';
+}
+function dashWeeks(item) {
+  if (item.leadTime !== 15) return null;
+  const w = Number(String(item.deliveryWeeks ?? '').trim());
+  return w > 0 ? w : null;
+}
+function dashLoc(item) {
+  if (item.storageLocation) return item.storageLocation;
+  const p = item.inventoryPolicy || '';
+  if (p.includes('Site Stock')) return 'Site Stock';
+  if (p.includes('Central')) return 'Central / Site Near';
+  if (p.includes('Order')) return 'Order / Repair Pool';
+  return p || '—';
+}
+function dashAction(item, st) {
+  if (item.actionNote) return item.actionNote;
+  if (item.remarks && st !== '정상') return item.remarks;
+  if (st === '결품') return '결품 · 긴급 발주 검토';
+  if (st === '미달') return '안전재고 미달 · 보충 계획 수립';
+  return '';
+}
+function dashCapRate(arr) {
+  if (!arr.length) return 100;
+  return Math.round(arr.reduce((s, i) => s + Math.min(i.qty / Math.max(i.target, 1), 1), 0) / arr.length * 1000) / 10;
+}
+function dashColors() {
+  const el = document.getElementById('page-dashboard');
+  const s = getComputedStyle(el || document.documentElement);
+  const g = n => s.getPropertyValue(n).trim();
+  return {
+    ok: g('--d-ok'), warn: g('--d-warn'), crit: g('--d-crit'), accent: g('--d-accent'),
+    blue: g('--d-blue'), green: g('--d-green'), muted: g('--text-muted'), track: g('--d-track'),
+    S: { '정상': g('--d-ok'), '미달': g('--d-warn'), '결품': g('--d-crit'), '미관리': '#94A3B8' }
+  };
+}
+
+function renderDashboard() {
+  const C = dashColors();
+  const st = calcStockStats();
+  const ALL = state.ledgerItems.map(item => {
+    const target = Number(item.minInventory) || 0;
+    const qty = Number(item.currentStock) || 0;
+    const status = dashStOf(item);
+    const lt = dashWeeks(item);
+    return {
+      no: item.materialNo || '—', name: item.equipmentName || '—', model: item.modelName || '—',
+      maker: item.maker || '—', grade: item.finalGrade || '—', target, qty, lt,
+      isLongDelivery: item.leadTime === 15, loc: dashLoc(item), act: dashAction(item, status),
+      st: status, trackManage: !!item.trackManage,
+    };
+  });
+  const MANAGED = ALL.filter(i => i.target > 0);
+  const total = ALL.length, managedN = MANAGED.length;
+  const cnt = s => ALL.filter(i => i.st === s).length;
+  const zero = cnt('결품'), short = cnt('미달'), okc = cnt('정상'), unmgmt = cnt('미관리');
+  const tracked = ALL.filter(i => i.trackManage);
+  const maxLT = (() => {
+    const w = tracked.filter(i => i.lt != null).map(i => i.lt);
+    return w.length ? Math.max(...w) : 0;
+  })();
+
+  const updEl = document.getElementById('dashUpd');
+  if (updEl) updEl.textContent = new Date().toLocaleString('ko-KR', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
+
+  document.getElementById('dashStats').innerHTML = [
+    { l:'총 등록 품목', v:total, u:'품목', c:'var(--d-blue)', ico:DASH_ICO.pkg,
+      f:`관리대상 ${managedN} · A ${ALL.filter(i=>i.grade==='A').length} · B ${ALL.filter(i=>i.grade==='B').length} · C ${ALL.filter(i=>i.grade==='C').length}` },
+    { l:'재고관리 대상수량', v:st.targetTotal, u:'EA', c:'var(--d-blue)', ico:DASH_ICO.shield, f:'관리 기준 수량' },
+    { l:'현재재고수량', v:st.countedCurrent, u:'EA', c:'var(--d-green)', ico:DASH_ICO.box, f:'대상 내 보유량' },
+    { l:'재고 보유율', v:st.rate, u:'%', c:'var(--d-accent)', ico:DASH_ICO.gauge, f:'목표 90%' },
+    { l:'결품 · 미달', v:zero + short, u:'품목', c:'var(--d-crit)', ico:DASH_ICO.alert,
+      f:`결품 <b style="color:var(--d-crit)">${zero}</b> · 미달 <b style="color:var(--d-warn)">${short}</b>` },
+  ].map(k => `<div class="dash-kpi" style="--c:${k.c}">
+      <div class="dash-kpi-h"><span class="dash-kpi-ico"><svg viewBox="0 0 24 24">${k.ico}</svg></span><span>${k.l}</span></div>
+      <div class="dash-kpi-v">${k.v}<u>${k.u}</u></div>
+      ${k.f ? `<div class="dash-kpi-f">${k.f}</div>` : ''}
+    </div>`).join('');
+
+  const trackedProblems = tracked.filter(i => i.st === '결품' || i.st === '미달');
+  const alertEl = document.getElementById('dashAlert');
+  if (trackedProblems.length) {
+    const tZero = tracked.filter(i => i.st === '결품').length;
+    const tShort = tracked.filter(i => i.st === '미달').length;
+    const tZeroA = tracked.filter(i => i.st === '결품' && i.grade === 'A').length;
+    const tLt = trackedProblems.filter(i => i.lt != null);
+    const tMax = tLt.length ? Math.max(...tLt.map(i => i.lt)) : 0;
+    alertEl.innerHTML = `<div class="dash-alert">
+      <svg viewBox="0 0 24 24">${DASH_ICO.alert}</svg>
+      <b>즉시 조치</b>
+      <div class="txt">추적관리 대상 중 결품 <em>${tZero}품목</em>${tZeroA ? ` (이 중 A등급 <em>${tZeroA}품목</em>)` : ''} · 안전재고 미달 <em>${tShort}품목</em>${tMax ? ` · 최장 납기 <em>${tMax}주</em>` : ''}</div>
+      <div class="go">하단 추적표 참조 ↓</div>
+    </div>`;
+  } else alertEl.innerHTML = '';
+
+  const donutTotal = total || 1;
+  const dseg = [
+    { k:'정상 확보', n:okc, c:C.S['정상'] },
+    { k:'안전재고 미달', n:short, c:C.S['미달'] },
+    { k:'결품 (보유 0)', n:zero, c:C.S['결품'] },
+    { k:'재고 미관리', n:unmgmt, c:C.S['미관리'] },
+  ].filter(d => d.n > 0);
+  const CX = 105, R = 84, CIRC = 2 * Math.PI * R;
+  let off = 0;
+  let svg = `<circle cx="${CX}" cy="${CX}" r="${R}" fill="none" stroke="${C.track}" stroke-width="22"/>`;
+  if (!total) {
+    svg += `<text x="${CX}" y="${CX}" text-anchor="middle" font-size="13" fill="${C.muted}">등록 품목 없음</text>`;
+  } else {
+    dseg.forEach(d => {
+      const len = d.n / donutTotal * CIRC;
+      svg += `<circle cx="${CX}" cy="${CX}" r="${R}" fill="none" stroke="${d.c}" stroke-width="22" stroke-linecap="round"
+        stroke-dasharray="${Math.max(len - 10, 1)} ${CIRC - Math.max(len - 10, 1)}" stroke-dashoffset="${-(off + 5)}"
+        transform="rotate(-90 ${CX} ${CX})"><title>${d.k} ${d.n}품목</title></circle>`;
+      off += len;
+    });
+    svg += `<text x="${CX}" y="99" text-anchor="middle" font-size="34" font-weight="700" fill="${C.ok}">${okc}<tspan font-size="16" fill="${C.muted}"> / ${total}</tspan></text>
+      <text x="${CX}" y="120" text-anchor="middle" font-size="12" fill="${C.muted}">정상 확보 품목</text>`;
+  }
+  document.getElementById('dashDonut').innerHTML = svg;
+  document.getElementById('dashDonutLegend').innerHTML = ['정상','미달','결품','미관리'].map(k => {
+    const n = cnt(k), c = C.S[k];
+    const label = k === '정상' ? '정상 확보' : k === '미달' ? '안전재고 미달' : k === '결품' ? '결품 (보유 0)' : '재고 미관리';
+    const pct = total > 0 ? Math.round(n / total * 1000) / 10 : 0;
+    return `<div class="dash-dl"><i style="background:${c}"></i><b>${label}<em>${DASH_DESC[k]}</em></b>
+      <div class="v" style="color:${c}">${n}<u>품목 · ${pct}%</u></div></div>`;
+  }).join('');
+
+  const gInfo = { A:'가동직결 · 단독설비', B:'예비기 보유', C:'범용 · 상시조달' };
+  document.getElementById('dashGrades').innerHTML = ['A','B','C'].map(g => {
+    const rows = MANAGED.filter(i => i.grade === g);
+    if (!rows.length) return '';
+    const r = dashCapRate(rows), goal = DASH_GOAL[g];
+    const missZero = rows.filter(i => i.st === '결품').length;
+    const missShort = rows.filter(i => i.st === '미달').length;
+    const miss = missZero + missShort;
+    const col = r >= goal ? C.ok : r >= goal - 15 ? C.warn : C.crit;
+    return `<div>
+      <div class="dash-gr-h"><b>${g}등급</b><em>${gInfo[g]} · ${rows.length}품목</em>
+        <span class="rt" style="color:${col}">${r}%</span></div>
+      <div class="dash-gr-t">
+        <div class="dash-gr-f" style="width:${Math.min(r,100)}%;background:${col}"></div>
+        <div class="dash-gr-goal" style="left:${goal}%" title="목표 ${goal}%"></div>
+      </div>
+      ${miss ? `<div class="dash-gr-miss">미확보 ${miss}품목(결품${missZero}, 미달${missShort})</div>` : ''}
+    </div>`;
+  }).join('') || '<div class="dash-empty">등급별 안전재고 대상 품목이 없습니다.</div>';
+
+  const rank = i => i.st === '결품' ? 0 : i.st === '미달' ? 1 : 2;
+  const rows = [...tracked].sort((a, b) => rank(a) - rank(b) || (b.lt ?? 0) - (a.lt ?? 0));
+  document.getElementById('trackTable').innerHTML = rows.length ? rows.map(it => {
+    const c = C.S[it.st] || C.muted;
+    const cls = it.st === '결품' ? 'dash-p-crit' : it.st === '미달' ? 'dash-p-warn' : 'dash-p-ok';
+    const ltC = it.lt != null && it.lt >= 20 ? C.crit : it.lt != null && it.lt >= DASH_LT_LONG ? C.warn : C.ok;
+    const ltPct = maxLT > 0 && it.lt != null ? it.lt / maxLT * 100 : 0;
+    const gCls = ['A','B','C'].includes(it.grade) ? `dash-b-${it.grade}` : '';
+    return `<tr class="${it.st === '결품' ? 'crit' : ''}">
+      <td style="color:var(--text-muted)">${esc(it.no)}</td>
+      <td><b style="display:block;font-size:12.5px">${esc(it.name)}</b>${it.isLongDelivery ? `<span style="font-size:10.5px;color:var(--d-warn)">Long Delivery</span>` : ''}</td>
+      <td style="color:var(--text-muted)">${esc(it.model)}</td>
+      <td style="color:var(--text-soft)">${esc(it.maker)}</td>
+      <td style="text-align:center">${gCls ? `<span class="dash-badge ${gCls}">${it.grade}</span>` : esc(it.grade)}</td>
+      <td style="text-align:center"><b style="color:${c}">${it.qty}</b> / ${it.target} EA</td>
+      <td style="font-size:11px;color:var(--text-soft)">${esc(it.loc)}</td>
+      <td>${it.lt != null ? `<div class="dash-lt"><div class="dash-lt-t"><div class="dash-lt-f" style="width:${ltPct}%;background:${ltC}"></div></div><b style="color:${ltC};font-size:11.5px;width:38px;text-align:right">${it.lt}주</b></div>` : '<span style="color:var(--text-muted)">—</span>'}</td>
+      <td style="text-align:center"><span class="dash-pill ${cls}">${it.st === '미관리' ? '미관리' : it.st}</span></td>
+      <td style="font-size:11px;color:var(--text-soft)">${esc(it.act) || '<span style="color:var(--text-muted)">정기 실사 시 확인</span>'}</td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="10" class="dash-empty">추적관리대상으로 체크된 품목이 없습니다. 관리대장에서 추적관리를 선택하세요.</td></tr>';
+
+  document.getElementById('fileInfo').innerHTML = state.fileName
+    ? `<strong>${esc(state.fileName)}</strong>품목 ${state.ledgerItems.length}건`
+    : '샘플 데이터 · ⬆️ 엑셀 불러오기';
+}
+
+function renderAll() { renderGrade(); renderLedger(); renderDashboard(); }
+renderAll();
+SparePartsTheme.bindToggles();
+window.addEventListener('spareparts-theme-change', renderAll);
+</script>
+</body>
+</html>
