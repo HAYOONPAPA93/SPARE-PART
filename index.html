@@ -6,6 +6,9 @@
   <title>Spare Parts 관리 시스템</title>
   <script src="theme.js"></script>
   <script>SparePartsTheme.initTheme();</script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+  <script src="supabase-store.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
   <style>
@@ -62,6 +65,13 @@
     .btn-upload:hover { filter: brightness(.95); }
     .file-info { margin-top: auto; padding-top: 16px; font-size: 11px; color: var(--text-faint); }
     .file-info strong { display: block; color: var(--text-soft); margin-bottom: 4px; word-break: break-all; }
+    .sync-status { margin-top: 10px; padding: 8px 10px; border-radius: 8px; font-size: 11px; line-height: 1.4; border: 1px solid var(--border); color: var(--text-muted); }
+    .sync-status.ok { color: #059669; background: rgba(16,185,129,.08); border-color: rgba(16,185,129,.25); }
+    .sync-status.warn { color: #B45309; background: rgba(245,158,11,.1); border-color: rgba(245,158,11,.3); }
+    [data-theme="dark"] .sync-status.ok { color: #6ee7b7; }
+    [data-theme="dark"] .sync-status.warn { color: #fcd34d; }
+    .btn-sync { margin-top: 8px; width: 100%; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--border); background: var(--panel-bg); color: var(--text-soft); font-size: 12px; font-weight: 600; cursor: pointer; }
+    .btn-sync:hover { filter: brightness(.97); }
     main { flex: 1; overflow: auto; padding: 24px 32px; background: var(--bg); }
     .page { display: none; } .page.active { display: block; }
     h2.page-title { font-size: 24px; font-weight: 700; margin-bottom: 4px; color: var(--text-strong); }
@@ -257,6 +267,9 @@
     <button class="btn-upload" id="btnUpload">⬆️ 엑셀 불러오기</button>
     <input type="file" id="fileInput" accept=".xlsx,.xlsm" />
     <div class="file-info" id="fileInfo"></div>
+    <div class="sync-status warn" id="syncStatus">저장 상태 확인 중…</div>
+    <button type="button" class="btn-sync" id="btnCloudReload">↻ 최신 데이터 불러오기</button>
+    <p style="margin-top:8px;font-size:10px;color:var(--text-faint);line-height:1.45">Teams 공유 시에도 같은 숫자가 보이게 하려면 공용저장(Supabase) 설정이 필요합니다. 무료입니다.</p>
   </aside>
   <main>
     <section id="page-dashboard" class="page active">
@@ -417,24 +430,45 @@ function sampleLedger(items) {
   return samples.map(s => recalcItem({ ...emptyItem(), ...s }, items));
 }
 
-function loadState() {
+function loadStateLocal() {
   try {
     for (const key of ['spare-parts-html-v4', 'spare-parts-html-v3']) {
       const r = localStorage.getItem(key);
       if (r) return JSON.parse(r);
     }
   } catch(e){}
+  return null;
+}
+function defaultState() {
   const items = JSON.parse(JSON.stringify(DEFAULT_CRITERIA));
   return { fileName:'', criteria:items, ledgerItems:sampleLedger(items) };
 }
-function saveState() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+function normalizeState(raw) {
+  const base = raw && typeof raw === 'object' ? raw : defaultState();
+  if (!base.criteria || !base.criteria.length) base.criteria = JSON.parse(JSON.stringify(DEFAULT_CRITERIA));
+  if (!Array.isArray(base.ledgerItems)) base.ledgerItems = sampleLedger(base.criteria);
+  base.criteria.forEach(c => {
+    if (c.criteria10 && c.criteria10.includes('감산')) c.criteria10 = c.criteria10.replace('감산', 'Load Down');
+  });
+  base.ledgerItems = base.ledgerItems.map(i => recalcItem(i, base.criteria));
+  return base;
+}
+function saveState(immediate) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e){}
+  if (window.SparePartsStore) SparePartsStore.save(state, !!immediate);
+}
+function updateSyncStatus(text, ok) {
+  const el = document.getElementById('syncStatus');
+  if (!el) return;
+  el.textContent = text;
+  el.className = 'sync-status ' + (ok ? 'ok' : 'warn');
+}
+function applyRemoteState(payload) {
+  state = normalizeState(payload);
+  renderAll();
+}
 
-let state = loadState();
-state.criteria.forEach(c => {
-  if (c.criteria10 && c.criteria10.includes('감산')) c.criteria10 = c.criteria10.replace('감산', 'Load Down');
-});
-state.ledgerItems = state.ledgerItems.map(i => recalcItem(i, state.criteria));
-saveState();
+let state = normalizeState(loadStateLocal() || defaultState());
 const chartStock = { current: null };
 const chartGrade = { current: null };
 
@@ -1134,7 +1168,38 @@ function renderDashboard() {
 }
 
 function renderAll() { renderGrade(); renderLedger(); renderDashboard(); }
-renderAll();
+
+async function bootCloud() {
+  if (!window.SparePartsStore) {
+    updateSyncStatus('로컬 저장만 사용 중', false);
+    renderAll();
+    return;
+  }
+  SparePartsStore.init({
+    onRemote: applyRemoteState,
+    onStatus: updateSyncStatus,
+  });
+  const result = await SparePartsStore.load();
+  if (result && result.data) state = normalizeState(result.data);
+  else if (!loadStateLocal()) state = normalizeState(defaultState());
+  renderAll();
+  SparePartsStore.subscribe();
+  // 클라우드가 비어 있었고 로컬만 있으면 즉시 업로드
+  if (SparePartsStore.getMode() === 'cloud') SparePartsStore.persistNow(state);
+}
+
+document.getElementById('btnCloudReload').onclick = async () => {
+  updateSyncStatus('클라우드에서 불러오는 중…', true);
+  const result = await SparePartsStore.load();
+  if (result && result.data) {
+    state = normalizeState(result.data);
+    renderAll();
+  } else {
+    updateSyncStatus('불러올 클라우드 데이터 없음', false);
+  }
+};
+
+bootCloud();
 SparePartsTheme.bindToggles();
 window.addEventListener('spareparts-theme-change', renderAll);
 </script>
