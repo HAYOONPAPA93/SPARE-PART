@@ -18,6 +18,12 @@
     return global.SPARE_PARTS_SUPABASE || {};
   }
 
+  function errText(e) {
+    if (!e) return 'unknown';
+    if (typeof e === 'string') return e;
+    return e.message || e.error_description || e.code || JSON.stringify(e);
+  }
+
   function isConfigured() {
     const c = cfg();
     return !!(c.url && c.anonKey && !String(c.url).includes('YOUR_') && !String(c.anonKey).includes('YOUR_'));
@@ -41,7 +47,26 @@
       return false;
     }
     const c = cfg();
-    client = global.supabase.createClient(c.url, c.anonKey);
+    const key = String(c.anonKey || '').trim();
+    const url = String(c.url || '').trim().replace(/\/$/, '');
+
+    if (key.startsWith('sb_publishable_') || key.startsWith('sb_secret_')) {
+      mode = 'local';
+      setStatus('⚠ 키 형식 오류 · Legacy anon(eyJ…) 키를 넣으세요', false);
+      return false;
+    }
+    if (!key.startsWith('eyJ')) {
+      mode = 'local';
+      setStatus('⚠ anon 키는 eyJ 로 시작해야 합니다', false);
+      return false;
+    }
+    if (!/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(url)) {
+      mode = 'local';
+      setStatus('⚠ Project URL 형식 확인 (https://xxx.supabase.co)', false);
+      return false;
+    }
+
+    client = global.supabase.createClient(url, key);
     mode = 'cloud';
     setStatus('클라우드 연결됨', true);
     return true;
@@ -82,10 +107,13 @@
         setStatus('클라우드 데이터 로드됨', true);
         return { data: payload, source: 'cloud', updatedAt: data.updated_at };
       }
-      // 클라우드 비어 있으면 로컬을 업로드
       const local = readLocal();
       if (local) {
-        await persistNow(local);
+        const saved = await persistNow(local, true);
+        if (!saved.ok) {
+          setStatus('최초 업로드 실패: ' + errText(saved.error), false);
+          return { data: local, source: 'local-fallback' };
+        }
         setStatus('로컬 → 클라우드 최초 업로드', true);
         return { data: local, source: 'local-upload' };
       }
@@ -93,32 +121,49 @@
       return { data: null, source: 'cloud-empty' };
     } catch (e) {
       console.warn('[Supabase] load failed', e);
-      setStatus('클라우드 실패 → 로컬 사용', false);
+      const msg = errText(e);
+      if (/relation .* does not exist|Could not find the table/i.test(msg)) {
+        setStatus('실패: app_state 테이블 없음 · SQL 다시 실행', false);
+      } else if (/JWT|Invalid API key|API key/i.test(msg)) {
+        setStatus('실패: API 키 오류 · Legacy anon(eyJ…) 확인', false);
+      } else {
+        setStatus('클라우드 실패: ' + msg, false);
+      }
       return { data: readLocal(), source: 'local-fallback' };
     }
   }
 
-  async function persistNow(payload) {
+  async function persistNow(payload, force) {
     writeLocal(payload);
     const json = JSON.stringify(payload);
-    if (json === lastSavedJson) return { ok: true, skipped: true };
+    if (!force && json === lastSavedJson) return { ok: true, skipped: true };
     if (mode !== 'cloud' || !client || applyingRemote) {
       lastSavedJson = json;
       return { ok: true, localOnly: true };
     }
     try {
-      const { error } = await client.from('app_state').upsert({
-        id: ROW_ID,
-        payload,
-        updated_at: new Date().toISOString(),
-      });
+      const { error } = await client.from('app_state').upsert(
+        {
+          id: ROW_ID,
+          payload,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'id' }
+      );
       if (error) throw error;
       lastSavedJson = json;
       setStatus('클라우드 저장됨 · ' + new Date().toLocaleTimeString('ko-KR'), true);
       return { ok: true };
     } catch (e) {
       console.warn('[Supabase] save failed', e);
-      setStatus('저장 실패 (로컬만 유지)', false);
+      const msg = errText(e);
+      if (/relation .* does not exist|Could not find the table/i.test(msg)) {
+        setStatus('저장 실패: 테이블 없음 · SQL 실행 필요', false);
+      } else if (/JWT|Invalid API key|API key|permission|RLS|policy/i.test(msg)) {
+        setStatus('저장 실패: 키/권한 오류 · Legacy anon 키 확인', false);
+      } else {
+        setStatus('저장 실패: ' + msg, false);
+      }
       return { ok: false, error: e };
     }
   }

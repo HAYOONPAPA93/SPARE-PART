@@ -1,15 +1,14 @@
 /**
- * ===== 여기만 수정하면 됩니다 (무료) =====
+ * ===== 여기만 수정 (무료) =====
  *
- * 1) https://supabase.com 가입 → New project
- * 2) SQL Editor 에서 supabase-setup.sql 실행
- * 3) Project Settings → API 에서 아래 2개 복사해서 붙여넣기
- * 4) 이 파일을 GitHub에 업로드 → Netlify 자동 배포
- * 5) Teams에 Netlify URL 공유
+ * url: Project URL (https://xxxx.supabase.co)
+ * anonKey: 반드시 "anon" "public" JWT 키 (eyJ... 로 시작)
+ *          sb_publishable_... / sb_secret_... 는 넣지 마세요.
  *
- * service_role 키는 절대 넣지 마세요. (anon public 만)
+ * 키 위치: Supabase → Project Settings → API Keys
+ *          → Legacy anon, service_role API keys → anon public 복사
  */
 window.SPARE_PARTS_SUPABASE = {
   url: 'https://nrxoeewvrdsqxcdmalks.supabase.co/rest/v1/',
-  anonKey: 'sb_publishable_zFxzVpJ9C7Nqt-RXufVIvw_EVBEUwhA',
+  anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5yeG9lZXd2cmRzcXhjZG1hbGtzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY1MTU5MTksImV4cCI6MjEwMjA5MTkxOX0.mBqTocC0tCjk2kZB5HONQ967hGh0AVF1nYRA2uKa49o',
 };
