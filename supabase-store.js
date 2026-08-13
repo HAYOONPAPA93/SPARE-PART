@@ -33,6 +33,23 @@
     if (typeof onStatus === 'function') onStatus(text, ok);
   }
 
+  /** 붙여넣기 실수(따옴표, 슬래시, dashboard 주소 등) 정리 */
+  function normalizeUrl(raw) {
+    let u = String(raw || '').trim().replace(/^['"`]|['"`]$/g, '');
+    const dash = u.match(/supabase\.com\/dashboard\/project\/([a-z0-9]+)/i);
+    if (dash) return 'https://' + dash[1] + '.supabase.co';
+    u = u.replace(/\/rest\/v1.*$/i, '').replace(/\/+$/g, '');
+    try {
+      const p = new URL(u);
+      if (/\.supabase\.co$/i.test(p.hostname)) return 'https://' + p.hostname;
+    } catch (e) {}
+    return u;
+  }
+
+  function normalizeKey(raw) {
+    return String(raw || '').trim().replace(/^['"`]|['"`]$/g, '').replace(/\s+/g, '');
+  }
+
   function init(handlers) {
     onRemote = handlers && handlers.onRemote;
     onStatus = handlers && handlers.onStatus;
@@ -47,8 +64,8 @@
       return false;
     }
     const c = cfg();
-    const key = String(c.anonKey || '').trim();
-    const url = String(c.url || '').trim().replace(/\/$/, '');
+    const key = normalizeKey(c.anonKey);
+    const url = normalizeUrl(c.url);
 
     if (key.startsWith('sb_publishable_') || key.startsWith('sb_secret_')) {
       mode = 'local';
@@ -60,9 +77,9 @@
       setStatus('⚠ anon 키는 eyJ 로 시작해야 합니다', false);
       return false;
     }
-    if (!/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(url)) {
+    if (!/^https:\/\/[a-z0-9]+\.supabase\.co$/i.test(url)) {
       mode = 'local';
-      setStatus('⚠ Project URL 형식 확인 (https://xxx.supabase.co)', false);
+      setStatus('⚠ URL을 https://프로젝트ID.supabase.co 형태로 넣어주세요', false);
       return false;
     }
 
