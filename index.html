@@ -73,6 +73,7 @@
     .btn-sync { margin-top: 8px; width: 100%; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--border); background: var(--panel-bg); color: var(--text-soft); font-size: 12px; font-weight: 600; cursor: pointer; }
     .btn-sync:hover { filter: brightness(.97); }
     main { flex: 1; overflow: auto; padding: 24px 32px; background: var(--bg); }
+    main:has(#page-ledger.active) { overflow: hidden; display: flex; flex-direction: column; }
     .page { display: none; } .page.active { display: block; }
     h2.page-title { font-size: 24px; font-weight: 700; margin-bottom: 4px; color: var(--text-strong); }
     .page-desc { font-size: 13px; color: var(--text-muted); margin-bottom: 20px; }
@@ -138,14 +139,25 @@
     .btn-export:hover { background: linear-gradient(135deg, #15803d, #16a34a); }
     .btn-danger { background: var(--danger-bg); color: var(--danger-text); border: 1px solid var(--danger-border); }
     .btn-danger:hover { background: var(--danger-bg); color: var(--danger-text-hover); filter: brightness(.95); }
-    .ledger-scroll { overflow: auto; max-height: calc(100vh - 280px); }
-    .ledger-scroll-hint { padding: 6px 12px; font-size: 10px; color: var(--text-faint); text-align: right; border-bottom: 1px solid var(--border-soft); }
-    .ledger-table { min-width: max-content; font-size: 12px; }
-    .ledger-table th { position: sticky; top: 0; z-index: 2; padding: 8px 6px; text-align: center; background: var(--table-head); }
+    #page-ledger.page.active { display: flex; flex-direction: column; flex: 1; min-height: 0; height: auto; }
+    #page-ledger .page-desc { flex-shrink: 0; }
+    #page-ledger .stats { flex-shrink: 0; }
+    #page-ledger .ledger-toolbar { flex-shrink: 0; }
+    .ledger-panel { flex: 1; display: flex; flex-direction: column; min-height: 0; margin-bottom: 0; overflow: hidden; }
+    .ledger-scroll-hint { padding: 6px 12px; font-size: 10px; color: var(--text-faint); text-align: right; border-bottom: 1px solid var(--border-soft); flex-shrink: 0; }
+    .ledger-hscroll { overflow-x: scroll; overflow-y: hidden; height: 14px; flex-shrink: 0; border-bottom: 1px solid var(--border-soft); }
+    .ledger-hscroll-inner { height: 1px; }
+    .ledger-scroll { flex: 1; overflow: scroll; min-height: 0; max-height: none; }
+    .ledger-scroll .panel-body { overflow: visible; padding: 0; }
+    .ledger-table { table-layout: fixed; width: max-content; min-width: 100%; border-collapse: separate; border-spacing: 0; font-size: 12px; }
+    .ledger-table th { position: sticky; top: 0; z-index: 4; padding: 8px 6px; text-align: center; background: var(--table-head); box-shadow: 0 1px 0 var(--table-border); white-space: nowrap; overflow: hidden; }
     .ledger-table th.th-auto { background: var(--table-head-alt); font-size: 10px; line-height: 1.3; }
-    .ledger-table td { padding: 4px 6px; border-right: 1px solid var(--table-cell-border); }
+    .ledger-table td { padding: 4px 6px; border-right: 1px solid var(--table-cell-border); overflow: hidden; }
     .ledger-table td.auto { background: var(--auto-cell-bg); text-align: center; color: var(--text-muted); }
-    .ledger-input { width: 100%; min-width: 50px; padding: 4px 6px; border: 1px solid transparent; border-radius: 4px; background: transparent; color: var(--input-text); font-size: 12px; }
+    .ledger-table th .col-resize { position: absolute; top: 0; right: -2px; width: 8px; height: 100%; cursor: col-resize; user-select: none; z-index: 5; }
+    .ledger-table th .col-resize:hover, .ledger-table th .col-resize.is-dragging { background: rgba(29,106,241,.35); }
+    .ledger-table col { min-width: 36px; }
+    .ledger-input { width: 100%; min-width: 0; box-sizing: border-box; padding: 4px 6px; border: 1px solid transparent; border-radius: 4px; background: transparent; color: var(--input-text); font-size: 12px; }
     .ledger-input:focus { outline: none; border-color: rgba(51,137,252,.5); background: var(--ledger-focus-bg); }
     .ledger-input.editable-stock { border-color: var(--editable-stock-border); background: var(--editable-stock-bg); text-align: center; }
     .ledger-select { width: 100%; padding: 4px; border-radius: 4px; border: 1px solid var(--select-border); background: var(--select-bg); color: var(--input-text); font-size: 12px; text-align: center; }
@@ -343,9 +355,10 @@
         <button class="btn btn-danger" id="btnDeleteRows">− 선택 행 삭제</button>
         <button class="btn btn-export" id="btnExport">📊 Export</button>
       </div>
-      <div class="panel">
-        <div class="ledger-scroll-hint">← 좌우 스크롤 →</div>
-        <div class="ledger-scroll"><div class="panel-body" id="ledgerTable"></div></div>
+      <div class="panel ledger-panel">
+        <div class="ledger-scroll-hint">헤더 고정 · 열 경계 드래그로 너비 조절 · 상·하단 좌우 스크롤</div>
+        <div class="ledger-hscroll" id="ledgerHScroll" title="좌우 스크롤"><div class="ledger-hscroll-inner" id="ledgerHScrollInner"></div></div>
+        <div class="ledger-scroll" id="ledgerScroll"><div class="panel-body" id="ledgerTable"></div></div>
       </div>
     </section>
   </main>
@@ -418,7 +431,7 @@ function emptyItem() {
   return { id:uid(), equipCategory:'', materialNo:'', equipmentName:'', modelName:'', maker:'', equipGrade:'', equipGradeScore:null,
     productionImpact:null, leadTime:null, failureFrequency:null, totalScore:0, finalGrade:'', inventoryPolicy:'',
     minInventory:0, minInventoryManual:false, reviewCycle:'', remarks:'', currentStock:0,
-    trackManage:false, deliveryWeeks:'', isLongDelivery:false };
+    trackManage:false, trackManageManual:false, deliveryWeeks:'', isLongDelivery:false };
 }
 
 function sampleLedger(items) {
@@ -443,6 +456,17 @@ function defaultState() {
   const items = JSON.parse(JSON.stringify(DEFAULT_CRITERIA));
   return { fileName:'', criteria:items, ledgerItems:sampleLedger(items) };
 }
+function isStockShortfall(item) {
+  const target = Number(item.minInventory) || 0;
+  const qty = Number(item.currentStock) || 0;
+  return target > 0 && qty < target;
+}
+/** 대상수량 미달이면 추적관리 자동 체크. 사용자가 직접 조작한 행은 유지 */
+function applyAutoTrackManage(item) {
+  if (item.trackManageManual) return item;
+  if (isStockShortfall(item)) item.trackManage = true;
+  return item;
+}
 function normalizeState(raw) {
   const base = raw && typeof raw === 'object' ? raw : defaultState();
   if (!base.criteria || !base.criteria.length) base.criteria = JSON.parse(JSON.stringify(DEFAULT_CRITERIA));
@@ -450,7 +474,7 @@ function normalizeState(raw) {
   base.criteria.forEach(c => {
     if (c.criteria10 && c.criteria10.includes('감산')) c.criteria10 = c.criteria10.replace('감산', 'Load Down');
   });
-  base.ledgerItems = base.ledgerItems.map(i => recalcItem(i, base.criteria));
+  base.ledgerItems = base.ledgerItems.map(i => applyAutoTrackManage(recalcItem(i, base.criteria)));
   return base;
 }
 function saveState(immediate) {
@@ -560,7 +584,7 @@ function importExcel(wb, fileName) {
         remarks:String(row[col('비고')]||''),
       }, state.criteria));
     }
-    if(imported.length) state.ledgerItems = imported;
+    if(imported.length) state.ledgerItems = imported.map(applyAutoTrackManage);
   }
   state.fileName = fileName; saveState(); renderAll();
 }
@@ -625,6 +649,7 @@ window.onLedgerChange = function(el) {
   if(['productionImpact','leadTime','failureFrequency'].includes(el.dataset.field)) v = v?Number(v):null;
   item[el.dataset.field] = v;
   Object.assign(item, recalcItem(item, state.criteria));
+  applyAutoTrackManage(item);
   saveState(); renderLedger(); renderDashboard();
 };
 
@@ -638,12 +663,15 @@ window.onLedgerNumber = function(el) {
   const n = Number(el.value.replace(/[^0-9]/g,''))||0;
   item[el.dataset.field] = n;
   if (el.dataset.field === 'minInventory') item.minInventoryManual = true;
-  saveState(); renderDashboard();
+  applyAutoTrackManage(item);
+  saveState(); renderLedger(); renderDashboard();
 };
 
 window.onTrackCheck = function(el) {
   const item = state.ledgerItems.find(i=>i.id===el.dataset.id); if(!item) return;
-  item.trackManage = el.checked; saveState(); renderDashboard();
+  item.trackManage = el.checked;
+  item.trackManageManual = true;
+  saveState(); renderLedger(); renderDashboard();
 };
 
 window.onDeliveryWeeks = function(el) {
@@ -923,10 +951,101 @@ function statColors() {
     : { main:'#0F172A', blue:'#2563EB', green:'#059669', violet:'#7C3AED', a:'#059669', b:'#B45309', c:'#C2410C', track:'#7C3AED' };
 }
 
+const LEDGER_COL_KEY = 'spare-parts-ledger-col-widths';
+const LEDGER_DEFAULT_COLS = [44,52,72,88,220,120,90,68,68,68,68,68,72,80,110,56,130,88,68,90,150,52];
+let ledgerColWidths = null;
+let ledgerScrollBound = false;
+
+function getLedgerColWidths() {
+  if (ledgerColWidths && ledgerColWidths.length === LEDGER_DEFAULT_COLS.length) return ledgerColWidths;
+  try {
+    const raw = localStorage.getItem(LEDGER_COL_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    if (Array.isArray(parsed) && parsed.length === LEDGER_DEFAULT_COLS.length) {
+      ledgerColWidths = parsed.map((n, i) => Math.max(36, Number(n) || LEDGER_DEFAULT_COLS[i]));
+      return ledgerColWidths;
+    }
+  } catch (e) {}
+  ledgerColWidths = LEDGER_DEFAULT_COLS.slice();
+  return ledgerColWidths;
+}
+function saveLedgerColWidths() {
+  try { localStorage.setItem(LEDGER_COL_KEY, JSON.stringify(getLedgerColWidths())); } catch (e) {}
+}
+function syncLedgerHScroll() {
+  const main = document.getElementById('ledgerScroll');
+  const top = document.getElementById('ledgerHScroll');
+  const inner = document.getElementById('ledgerHScrollInner');
+  const table = document.querySelector('#ledgerTable .ledger-table');
+  if (!main || !top || !inner || !table) return;
+  inner.style.width = Math.max(table.scrollWidth, main.clientWidth) + 'px';
+  if (top.scrollLeft !== main.scrollLeft) top.scrollLeft = main.scrollLeft;
+}
+function bindLedgerScrollSync() {
+  if (ledgerScrollBound) { syncLedgerHScroll(); return; }
+  const main = document.getElementById('ledgerScroll');
+  const top = document.getElementById('ledgerHScroll');
+  if (!main || !top) return;
+  let lock = false;
+  main.addEventListener('scroll', () => {
+    if (lock) return;
+    lock = true;
+    top.scrollLeft = main.scrollLeft;
+    lock = false;
+  });
+  top.addEventListener('scroll', () => {
+    if (lock) return;
+    lock = true;
+    main.scrollLeft = top.scrollLeft;
+    lock = false;
+  });
+  window.addEventListener('resize', syncLedgerHScroll);
+  ledgerScrollBound = true;
+  syncLedgerHScroll();
+}
+function bindLedgerColResize(table) {
+  const cols = table.querySelectorAll('colgroup col');
+  const ths = table.querySelectorAll('thead th');
+  ths.forEach((th, i) => {
+    th.style.position = 'sticky';
+    const handle = document.createElement('span');
+    handle.className = 'col-resize';
+    handle.title = '드래그하여 열 너비 조절';
+    th.appendChild(handle);
+    handle.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      handle.classList.add('is-dragging');
+      const startX = e.clientX;
+      const startW = cols[i] ? cols[i].getBoundingClientRect().width : getLedgerColWidths()[i];
+      const onMove = (ev) => {
+        const w = Math.max(36, Math.round(startW + (ev.clientX - startX)));
+        getLedgerColWidths()[i] = w;
+        if (cols[i]) cols[i].style.width = w + 'px';
+        th.style.width = w + 'px';
+        syncLedgerHScroll();
+      };
+      const onUp = () => {
+        handle.classList.remove('is-dragging');
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        saveLedgerColWidths();
+        syncLedgerHScroll();
+      };
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    });
+  });
+}
+
 function renderLedger() {
+  const scrollEl = document.getElementById('ledgerScroll');
+  const prevTop = scrollEl ? scrollEl.scrollTop : 0;
+  const prevLeft = scrollEl ? scrollEl.scrollLeft : 0;
   const q = (document.getElementById('ledgerSearch').value||'').toLowerCase();
   const items = state.ledgerItems.filter(i=>!q||[i.materialNo,i.equipmentName,i.modelName,i.maker,i.finalGrade].join(' ').toLowerCase().includes(q));
   const all = state.ledgerItems;
+  const widths = getLedgerColWidths();
 
   const sc = statColors();
   document.getElementById('ledgerStats').innerHTML = [
@@ -935,27 +1054,28 @@ function renderLedger() {
     ['추적관리', all.filter(i=>i.trackManage).length, sc.track],
   ].map(([l,v,c])=>`<div class="stat stat-top"><label>${l}</label><span style="color:${c}">${v}</span></div>`).join('');
 
-  document.getElementById('ledgerTable').innerHTML = `<table class="ledger-table"><thead><tr>
-    <th style="width:44px">선택</th>
-    <th style="width:52px">추적<br>관리</th>
-    <th style="width:72px">설비구분</th>
-    <th style="width:88px">자재 No.</th><th style="width:190px">설비명</th><th style="width:120px">Model명</th><th style="width:90px">Maker</th>
-    <th style="width:68px">설비등급</th><th class="th-auto" style="width:68px">설비등급<br>점수</th>
-    <th style="width:68px">생산영향</th><th style="width:68px">납기</th><th style="width:68px">고장빈도</th>
-    <th style="width:88px">Long<br>Delivery</th><th style="width:80px">납기<br>(weeks)</th>
-    <th style="width:110px">환산총점</th><th style="width:56px">등급</th>
-    <th style="width:130px">권장재고정책</th>
-    <th class="th-auto" style="width:88px">재고관리<br>대상수량</th>
-    <th class="th-auto" style="width:68px">현재<br>재고</th>
-    <th style="width:90px">검토주기</th><th style="width:150px">비고</th><th style="width:52px">삭제</th>
+  const colgroup = `<colgroup>${widths.map(w => `<col style="width:${w}px">`).join('')}</colgroup>`;
+  document.getElementById('ledgerTable').innerHTML = `<table class="ledger-table">${colgroup}<thead><tr>
+    <th style="width:${widths[0]}px">선택</th>
+    <th style="width:${widths[1]}px">추적<br>관리</th>
+    <th style="width:${widths[2]}px">설비구분</th>
+    <th style="width:${widths[3]}px">자재 No.</th><th style="width:${widths[4]}px">설비명</th><th style="width:${widths[5]}px">Model명</th><th style="width:${widths[6]}px">Maker</th>
+    <th style="width:${widths[7]}px">설비등급</th><th class="th-auto" style="width:${widths[8]}px">설비등급<br>점수</th>
+    <th style="width:${widths[9]}px">생산영향</th><th style="width:${widths[10]}px">납기</th><th style="width:${widths[11]}px">고장빈도</th>
+    <th style="width:${widths[12]}px">Long<br>Delivery</th><th style="width:${widths[13]}px">납기<br>(weeks)</th>
+    <th style="width:${widths[14]}px">환산총점</th><th style="width:${widths[15]}px">등급</th>
+    <th style="width:${widths[16]}px">권장재고정책</th>
+    <th class="th-auto" style="width:${widths[17]}px">재고관리<br>대상수량</th>
+    <th class="th-auto" style="width:${widths[18]}px">현재<br>재고</th>
+    <th style="width:${widths[19]}px">검토주기</th><th style="width:${widths[20]}px">비고</th><th style="width:${widths[21]}px">삭제</th>
   </tr></thead><tbody>${items.map(it=>{
     const isLD = it.leadTime === 15;
     return `<tr>
       <td style="text-align:center"><input type="checkbox" class="chk row-select" data-id="${it.id}"/></td>
-      <td style="text-align:center"><input type="checkbox" class="chk" data-id="${it.id}" ${it.trackManage?'checked':''} onchange="onTrackCheck(this)"/></td>
+      <td style="text-align:center"><input type="checkbox" class="chk" data-id="${it.id}" ${it.trackManage?'checked':''} onchange="onTrackCheck(this)" title="${it.trackManageManual?'수동 설정':'미달 시 자동 체크(해제 가능)'}"/></td>
       <td>${equipCategorySelect(it.equipCategory||'', it.id)}</td>
       <td><input class="ledger-input" data-id="${it.id}" data-field="materialNo" value="${esc(it.materialNo)}" onchange="onLedgerInput(this)"/></td>
-      <td><input class="ledger-input" data-id="${it.id}" data-field="equipmentName" value="${esc(it.equipmentName)}" onchange="onLedgerInput(this)"/></td>
+      <td><input class="ledger-input" data-id="${it.id}" data-field="equipmentName" value="${esc(it.equipmentName)}" onchange="onLedgerInput(this)" title="${esc(it.equipmentName)}"/></td>
       <td><input class="ledger-input" data-id="${it.id}" data-field="modelName" value="${esc(it.modelName)}" onchange="onLedgerInput(this)"/></td>
       <td><input class="ledger-input" data-id="${it.id}" data-field="maker" value="${esc(it.maker)}" onchange="onLedgerInput(this)"/></td>
       <td>${gradeSelect(it.equipGrade,it.id)}</td>
@@ -974,6 +1094,15 @@ function renderLedger() {
       <td><input class="ledger-input" data-id="${it.id}" data-field="remarks" value="${esc(it.remarks)}" onchange="onLedgerInput(this)"/></td>
       <td style="text-align:center"><button type="button" class="btn-del" title="행 삭제" onclick="deleteRow('${it.id}')">삭제</button></td>
     </tr>`;}).join('')}</tbody></table>`;
+
+  const table = document.querySelector('#ledgerTable .ledger-table');
+  if (table) bindLedgerColResize(table);
+  bindLedgerScrollSync();
+  if (scrollEl) {
+    scrollEl.scrollTop = prevTop;
+    scrollEl.scrollLeft = prevLeft;
+  }
+  syncLedgerHScroll();
 }
 
 const DASH_GOAL = { A:100, B:95, C:90 };
